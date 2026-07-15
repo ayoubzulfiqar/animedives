@@ -12,6 +12,16 @@
 - **Dark & light themes** — Native Material 3 theming with AMOLED-ready dark mode.
 - **Search & filter** — Instantly find any anime by title or domain across all configured providers.
 
-## Downloads
+## App for to Watch Anime. Ad's Free.
 
 The Android APK is available in the [`apk/`](apk/) folder.
+NO Plugin, Just Select the Anime Site and Watch, That's it.
+No ads.
+NO ANY DEPENDENCIES
+
+## Installation
+
+1. Download the APK from the `apk/` folder
+2. Enable **Unknown sources** in your device settings (Settings > Apps & notifications > Special app access > Install unknown apps)
+3. Open the APK and follow the on-screen installation prompts
+4. Launch AnimeDives and start streaming completed anime instantly
