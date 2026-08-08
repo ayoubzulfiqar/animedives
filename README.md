@@ -46,16 +46,6 @@ AnimeDives supports a wide range of streaming providers. _(Note: Provider availa
 - [anikoto.cz](https://anikoto.cz/home)
 - [animenosub.to](https://animenosub.to/)
 
-### 🔞 Mature / 18+ Content
-
-_⚠️ The following providers contain adult content. Viewer discretion is advised._
-
-- [rule34video.com](https://rule34video.com/)
-- [hentai.tv](https://hentai.tv/)
-- [hentaicity.com](https://www.hentaicity.com/)
-- [underhentai.net](https://www.underhentai.net/)
-- [oppai.stream](https://oppai.stream/)
-- [hentai-moon.com](https://hentai-moon.com/discover/)
 
 ---
 
