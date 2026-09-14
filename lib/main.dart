@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:webview_flutter/webview_flutter.dart' show WebViewController;
 
 import 'controllers/history_controller.dart';
 import 'screens/home_screen.dart';
@@ -20,7 +19,6 @@ void main() async {
 
   // Modern edge-to-edge look on Android (draw behind status/nav bars).
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  WebViewController().clearCache();
 
   // Allow both portrait and landscape. We enforce portrait by default here and
   // the WebView screen temporarily flips to landscape when a video goes native
