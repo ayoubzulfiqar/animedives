@@ -92,6 +92,13 @@ class AnimeSiteConfig {
         safeCdnDomains: (json['safeCdnDomains'] as List?)?.map((e) => e as String).toList() ?? const [],
       );
 
+  /// Convenience: JSON string for SharedPreferences persistence.
+  String toJsonString() => jsonEncode(toJson());
+
+  /// Convenience: parse from a JSON string stored by [toJsonString].
+  factory AnimeSiteConfig.fromJsonString(String raw) =>
+      AnimeSiteConfig.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+
   /// Safely embeds the injected CSS into a JavaScript source string.
   String get injectedCssJs => jsonEncode(injectedCss);
 }
