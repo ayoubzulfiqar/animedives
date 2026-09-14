@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=AnimeDives
+Comment=An Anime Watching App
+Exec=animedives
+Icon=animedives
+Terminal=false
+Categories=Utility;Network;AudioVideo;
