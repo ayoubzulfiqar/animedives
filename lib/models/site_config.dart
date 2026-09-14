@@ -27,6 +27,10 @@ class AnimeSiteConfig {
   /// typically video CDNs / asset hosts the player depends on.
   final List<String> safeCdnDomains;
 
+  /// Whether this provider targets adult / 18+ content. Drives the Anime/Hentai
+  /// category filter in the home screen.
+  final bool mature;
+
   const AnimeSiteConfig({
     required this.name,
     required this.homepageUrl,
@@ -34,6 +38,7 @@ class AnimeSiteConfig {
     this.logoUrl = '',
     this.hideSelectors = const [],
     this.safeCdnDomains = const [],
+    this.mature = false,
   });
 
   /// Extracts the bare host (domain) from a URL, e.g.
@@ -61,6 +66,7 @@ class AnimeSiteConfig {
     String logoUrl = '',
     List<String> hideSelectors = const [],
     List<String> safeCdnDomains = const [],
+    bool mature = false,
   }) {
     return AnimeSiteConfig(
       name: name,
@@ -69,6 +75,7 @@ class AnimeSiteConfig {
       logoUrl: logoUrl,
       hideSelectors: hideSelectors,
       safeCdnDomains: safeCdnDomains,
+      mature: mature,
     );
   }
 
@@ -80,6 +87,7 @@ class AnimeSiteConfig {
         'logoUrl': logoUrl,
         'hideSelectors': hideSelectors,
         'safeCdnDomains': safeCdnDomains,
+        'mature': mature,
       };
 
   /// De-serializes a config created with [toJson].
@@ -90,6 +98,7 @@ class AnimeSiteConfig {
         logoUrl: json['logoUrl'] as String? ?? '',
         hideSelectors: (json['hideSelectors'] as List?)?.map((e) => e as String).toList() ?? const [],
         safeCdnDomains: (json['safeCdnDomains'] as List?)?.map((e) => e as String).toList() ?? const [],
+        mature: json['mature'] as bool? ?? false,
       );
 
   /// Convenience: JSON string for SharedPreferences persistence.

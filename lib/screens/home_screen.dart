@@ -33,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
   bool _isInitialized = false;
+  bool _showMature = false;
 
   @override
   void initState() {
@@ -70,12 +71,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<AnimeSiteConfig> get _filteredSites {
     final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return _sites;
     return _sites
         .where(
           (s) =>
-              s.name.toLowerCase().contains(q) ||
-              s.domain.toLowerCase().contains(q),
+              (_showMature || !s.mature) &&
+              (q.isEmpty ||
+                  s.name.toLowerCase().contains(q) ||
+                  s.domain.toLowerCase().contains(q)),
         )
         .toList();
   }
@@ -223,6 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _appBar(),
               _welcomeBanner(),
               _searchBar(),
+              _filterBar(),
               const SliverToBoxAdapter(
                 child: Center(
                   child: Padding(
@@ -241,7 +244,13 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
-          slivers: [_appBar(), _welcomeBanner(), _searchBar(), _grid()],
+          slivers: [
+            _appBar(),
+            _welcomeBanner(),
+            _searchBar(),
+            _filterBar(),
+            _grid(),
+          ],
         ),
       ),
     );
@@ -394,6 +403,61 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ),
   );
+
+  /// Category filter chips (Anime / Hentai) rendered above the search bar.
+  Widget _filterBar() => SliverPadding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        sliver: SliverToBoxAdapter(
+          child: Row(
+            children: [
+              _categoryChip('Anime', !_showMature, () {
+                setState(() => _showMature = false);
+              }, isMature: false),
+              const SizedBox(width: 12),
+              _categoryChip('Hentai', _showMature, () {
+                setState(() => _showMature = true);
+              }, isMature: true),
+              const Spacer(),
+              if (_showMature)
+                Icon(Icons.warning_amber_rounded,
+                    color: _animedives(context).mutedForeground, size: 16),
+            ],
+          ),
+        ),
+      );
+
+  Widget _categoryChip(
+      String label, bool selected, VoidCallback onTap,
+      {required bool isMature}) {
+    final Color color = selected
+        ? (isMature
+            ? _animedives(context).destructive
+            : _scheme(context).primary)
+        : _animedives(context).border;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? (isMature
+                  ? _animedives(context).destructive.withValues(alpha: 0.15)
+                  : _scheme(context).primary.withValues(alpha: 0.15))
+              : _scheme(context).surfaceContainerHighest,
+          border: Border.all(color: color, width: selected ? 2 : 1),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _searchBar() => SliverPadding(
     padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
