@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/site_config.dart';
 import '../models/watch_history.dart';
 
 /// Storage key under which the list of [WatchHistoryEntry] rows is persisted.
@@ -190,5 +191,34 @@ class HistoryController extends GetxController {
   Future<void> clearAll() async {
     entries.clear();
     await _save();
+  }
+
+  // ── Custom site persistence ─────────────────────────────────────────
+  /// Storage key for the user's custom (non-default) site configs.
+  static const String _kCustomSitesPrefsKey = 'animedives.custom_sites.v1';
+
+  /// Returns the list of custom site configs persisted from the "Add Site"
+  /// dialog. Returns an empty list if nothing has been saved yet.
+  Future<List<AnimeSiteConfig>> loadCustomSites() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    final raw = _prefs?.getStringList(_kCustomSitesPrefsKey) ?? [];
+    final result = <AnimeSiteConfig>[];
+    for (final row in raw) {
+      try {
+        result.add(AnimeSiteConfig.fromJsonString(row));
+      } catch (_) {
+        // Skip just this corrupt entry; keep the rest.
+      }
+    }
+    return result;
+  }
+
+  /// Persists [sites] as the user's complete custom-site list (overwrites any
+  /// previously saved entries). Called whenever a custom site is added or
+  /// removed.
+  Future<void> saveCustomSites(List<AnimeSiteConfig> sites) async {
+    _prefs ??= await SharedPreferences.getInstance();
+    final raw = sites.map((e) => e.toJsonString()).toList();
+    await _prefs!.setStringList(_kCustomSitesPrefsKey, raw);
   }
 }
