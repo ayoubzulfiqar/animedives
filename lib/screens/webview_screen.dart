@@ -309,25 +309,11 @@ class _WebviewScreenState extends State<WebviewScreen>
     final uri = Uri.tryParse(_currentUrl);
     if (uri == null) return;
 
-    // 2. Extract a clean Anime identifier (Slug)
-    // Instead of just taking the absolute last path segment (which shifts from episode-1 to episode-2),
-    // identify the base folder or clean the string to bind it to the series name.
-    String baseSlug = uri.pathSegments.isNotEmpty
-        ? uri.pathSegments.last
-        : widget.site.name;
-
-    // Normalize out common episode designations so "naruto-episode-1" and "naruto-ep-2"
-    // map to the same base show history record id.
-    // Safer: Only strip if explicitly marked as an episode
-    final episodeRegex = RegExp(
-      r'[-_](?:ep|episode|ch|chapter)[-_]?\d+$',
-      caseSensitive: false,
-    );
-    String showIdSlug = baseSlug.replaceAll(episodeRegex, '');
-    if (showIdSlug.isEmpty) showIdSlug = baseSlug;
-
-    // 3. Generate the stable key for HistoryController
-    final id = animeHistoryId(widget.site.domain, showIdSlug);
+    // 2. Generate the stable key for HistoryController. The function picks the
+    // most "anime-like" path segment (excluding generic keywords and episode
+    // markers like "episode-3"), so episodes of the same series collapse into
+    // one updatable entry.
+    final id = animeHistoryId(widget.site.domain, _currentUrl);
 
     if (_isGenericPage(id, _currentUrl)) return;
 
@@ -339,7 +325,11 @@ class _WebviewScreenState extends State<WebviewScreen>
     }
     _lastHistoryWrite = now;
 
-    // 4. Resolve titles and write (The rest of your method remains unchanged)
+    // 3. Derive a readable title: prefer the captured document title, then a
+    // humanized URL slug, then the provider name.
+    final baseSlug = uri.pathSegments.isNotEmpty
+        ? uri.pathSegments.last
+        : widget.site.name;
     final existing = Get.find<HistoryController>().byId(id);
     final fallback = humanizeSlug(baseSlug);
     final title = _currentTitle.isNotEmpty
@@ -362,12 +352,13 @@ class _WebviewScreenState extends State<WebviewScreen>
     // history list (and trigger Obx rebuilds) while the framework's build/layout
     // phase is locked. Once disposed (back navigation / exit) we persist
     // synchronously - there is no build in progress, so it is safe and the final
-    // state is not lost.
+    // state is not lost. unawaited makes the fire-and-forget explicit.
     if (mounted) {
       Future.microtask(() {
         Get.find<HistoryController>().record(entry);
       });
     } else {
+      // ignore: unawaited_futures
       Get.find<HistoryController>().record(entry);
     }
   }
