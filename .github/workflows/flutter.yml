@@ -5,6 +5,11 @@ on:
     branches: [main]
   release:
     types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
 
 jobs:
   analyze-and-test:
@@ -31,6 +36,10 @@ jobs:
     name: Build APK
     runs-on: ubuntu-latest
     needs: analyze-and-test
+    # Always build the APK even if analyze/test failed — artifact is still
+    # useful for manual testing.  Use continue-on-error + if: always().
+    if: ${{ !cancelled() }}
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
