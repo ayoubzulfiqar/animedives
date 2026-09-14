@@ -90,12 +90,14 @@ class WatchHistoryEntry {
 /// segment of [url] (the segment with the most alphabetic characters that is
 /// not a generic navigation keyword or an episode/chapter marker). Grouping by
 /// this means different episodes of the same anime collapse into one updatable
-/// entry, while different animes stay separate. Falls back to the full path when
-/// the URL has no usable segments.
+/// entry, while different animes stay separate. Falls back to 'home' when the
+/// URL has no usable segments.
 String animeHistoryId(String domain, String url) {
   final uri = Uri.tryParse(url);
   final host = (uri?.host.isNotEmpty == true ? uri!.host : domain)
-      .toLowerCase();
+      .toLowerCase()
+      .replaceFirst(RegExp(r'^www\.'), '');
+
   final segments = (uri?.pathSegments ?? const <String>[])
       .where((s) => s.isNotEmpty)
       .toList();
@@ -104,24 +106,36 @@ String animeHistoryId(String domain, String url) {
   if (segments.isEmpty) {
     slug = 'home';
   } else {
-    // Exclude generic navigation segments so the anime title wins.
+    // Strip trailing episode/chapter markers from each segment so
+    // "one-piece-ep-5" becomes "one-piece" and "episode-3" becomes "" (then
+    // filtered out as empty).
+    final episodeStrip =
+        RegExp(r'[-_]?(?:ep|episode|ch|chapter)[-_]?\d+$', caseSensitive: false);
+    final cleaned = <String>[];
+    for (final s in segments) {
+      final stripped = s.replaceAll(episodeStrip, '').trim();
+      if (stripped.isNotEmpty) cleaned.add(stripped);
+    }
+
+    // Exclude generic navigation segments and pure episode/chapter markers
+    // so the anime title wins.
     const generic = {
       'home', 'homepage', 'index', 'watch', 'anime', 'tv', 'movies',
       'series', 'browse', 'latest', 'popular', 'trending',
-      'episode', 'ep', 'chapter', 'ch', 'discover', 'search',
+      'discover', 'search',
     };
-    final candidates = segments.where((s) {
+    final candidates = cleaned.where((s) {
       final lower = s.toLowerCase();
       if (generic.contains(lower)) return false;
-      // Skip pure episode/chapter segments like "ep-1", "episode-3", "ch10".
-      if (RegExp(r'^(ep|episode|ch|chapter)[-_]?\d+$', caseSensitive: false).hasMatch(lower)) return false;
+      // Skip standalone episode/chapter markers left after stripping.
+      if (RegExp(r'^(ep|episode|ch|chapter)$', caseSensitive: false).hasMatch(lower)) return false;
       return true;
     }).toList();
 
     if (candidates.isEmpty) {
       // Nothing left after filtering — fall back to the most alphabetic segment.
-      segments.sort((a, b) => _letterCount(b).compareTo(_letterCount(a)));
-      slug = segments.first;
+      cleaned.sort((a, b) => _letterCount(b).compareTo(_letterCount(a)));
+      slug = cleaned.isNotEmpty ? cleaned.first : 'home';
     } else {
       candidates.sort((a, b) => _letterCount(b).compareTo(_letterCount(a)));
       slug = candidates.first;
