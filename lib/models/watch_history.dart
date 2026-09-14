@@ -87,11 +87,11 @@ class WatchHistoryEntry {
 /// Builds the stable history [id] for an anime page.
 ///
 /// The id is "$domain::$slug" where [slug] is the most "anime-like" path
-/// segment of [url] (the segment with the most alphabetic characters - usually
-/// the anime slug, not an episode number). Grouping by this means different
-/// episodes of the same anime collapse into one updatable entry, while
-/// different animes stay separate. Falls back to the full path when the URL has
-/// no usable segments.
+/// segment of [url] (the segment with the most alphabetic characters that is
+/// not a generic navigation keyword or an episode/chapter marker). Grouping by
+/// this means different episodes of the same anime collapse into one updatable
+/// entry, while different animes stay separate. Falls back to the full path when
+/// the URL has no usable segments.
 String animeHistoryId(String domain, String url) {
   final uri = Uri.tryParse(url);
   final host = (uri?.host.isNotEmpty == true ? uri!.host : domain)
@@ -102,14 +102,30 @@ String animeHistoryId(String domain, String url) {
 
   String slug;
   if (segments.isEmpty) {
-    slug = uri?.path.isNotEmpty == true ? uri!.path : 'home';
+    slug = 'home';
   } else {
-    // Pick the segment with the most letters; that's typically the anime slug
-    // rather than a numeric episode id or a generic "watch"/"anime" prefix.
-    segments.sort(
-      (a, b) => _letterCount(b).compareTo(_letterCount(a)),
-    );
-    slug = segments.first;
+    // Exclude generic navigation segments so the anime title wins.
+    const generic = {
+      'home', 'homepage', 'index', 'watch', 'anime', 'tv', 'movies',
+      'series', 'browse', 'latest', 'popular', 'trending',
+      'episode', 'ep', 'chapter', 'ch', 'discover', 'search',
+    };
+    final candidates = segments.where((s) {
+      final lower = s.toLowerCase();
+      if (generic.contains(lower)) return false;
+      // Skip pure episode/chapter segments like "ep-1", "episode-3", "ch10".
+      if (RegExp(r'^(ep|episode|ch|chapter)[-_]?\d+$', caseSensitive: false).hasMatch(lower)) return false;
+      return true;
+    }).toList();
+
+    if (candidates.isEmpty) {
+      // Nothing left after filtering — fall back to the most alphabetic segment.
+      segments.sort((a, b) => _letterCount(b).compareTo(_letterCount(a)));
+      slug = segments.first;
+    } else {
+      candidates.sort((a, b) => _letterCount(b).compareTo(_letterCount(a)));
+      slug = candidates.first;
+    }
   }
   return '$host::$slug';
 }
