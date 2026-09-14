@@ -29,9 +29,38 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late List<AnimeSiteConfig> _sites = List.from(defaultSites);
+  final List<AnimeSiteConfig> _sites = [];
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-load custom sites saved from a previous session alongside the
+    // default providers. Done in initState so the list is ready before the
+    // first build.
+    _sites.addAll(defaultSites);
+    _loadCustomSites();
+  }
+
+  Future<void> _loadCustomSites() async {
+    try {
+      final custom = await Get.find<HistoryController>().loadCustomSites();
+      if (mounted && custom.isNotEmpty) {
+        setState(() {
+          _sites.addAll(custom);
+        });
+      }
+    } catch (_) {
+      // SharedPreferences may be unavailable (e.g. in unit tests); the
+      // default sites are already loaded so the UI can still render.
+    } finally {
+      if (mounted) {
+        setState(() => _isInitialized = true);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -149,7 +178,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Context mounting check enforces frame safety across structural pops
     if (result != null && mounted) {
-      setState(() => _sites = [..._sites, result]);
+      setState(() => _sites.add(result));
+      final custom = _sites.where((s) => !defaultSites.contains(s)).toList();
+      Get.find<HistoryController>().saveCustomSites(custom);
     }
   }
 
@@ -182,6 +213,29 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: SafeArea(
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              _appBar(),
+              _welcomeBanner(),
+              _searchBar(),
+              const SliverToBoxAdapter(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 32),
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
@@ -389,7 +443,12 @@ class _HomeScreenState extends State<HomeScreen> {
               site: site,
               onTap: () => _openSite(site),
               onRemove: isCustom
-                  ? () => setState(() => _sites.remove(site))
+                  ? () {
+                      setState(() => _sites.remove(site));
+                      final custom =
+                          _sites.where((s) => !defaultSites.contains(s)).toList();
+                      Get.find<HistoryController>().saveCustomSites(custom);
+                    }
                   : null,
             );
           }, childCount: sites.length),
