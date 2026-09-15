@@ -191,7 +191,7 @@ flutter test
 ### Adding a New Provider
 
 1. Add the provider's details to the `_allSites` table in [`lib/provider.dart`](lib/provider.dart)
-2. Each entry uses the `_SiteRow` record: name, homepageUrl, logoUrl, safeCdnDomains, hideSelectors, and a `mature` flag
+2. Each entry uses the `_SiteRow` record: name, homepageUrl, logoUrl, safeCdnDomains, hideSelectors, and category flags
 3. Pre-configured sites with custom selectors can include a `hideSelectors` list; otherwise the global selectors in [`lib/models/site_config.dart`](lib/models/site_config.dart) are used
 4. Update the supported providers table in the README
 
