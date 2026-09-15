@@ -159,11 +159,8 @@ configured and ready to use.
 
 1. Visit our official website: [animedives.com](https://animedives.com/)
 2. Download the latest release for your platform:
-   - **Android**: APK available via GitHub Actions artifacts
-   - **Linux (Debian/Ubuntu)**: `.deb` package
-   - **Linux (Fedora/RHEL)**: `.rpm` package
-   - **Linux (Arch)**: `.tar.zst` package
-3. Install the application and grant necessary permissions (e.g., screen rotation, storage for caching).
+   - **Android**: APK + AAB available via GitHub Actions artifacts
+3. Install the APK or AAB and grant necessary permissions (e.g., screen rotation, storage for caching).
 4. Select your preferred provider from the dashboard and start watching!
 
 ### For Developers
@@ -202,9 +199,6 @@ flutter test
 GitHub Actions automatically builds APK and App Bundle binaries on every push
 and release. See the [releases page](https://github.com/ayoubzulfiqar/animedives/releases)
 for the latest binaries.
-
-Linux desktop packages (`.deb`, `.rpm`, `.tar.zst`) are built locally using the
-`build_linux_packages.sh` script.
 
 ---
 
