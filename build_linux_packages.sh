@@ -26,8 +26,8 @@ cp -r "$BUILD_DIR/lib" "$DEB_DIR/usr/lib/animedives/lib"
 
 # Strip rpath from shared libraries (RPM rejects non-standard rpaths like
 # /home/sensei/Android/Sdk/jre/lib/server)
+# Strip only bad absolute rpaths from .so files (keep $ORIGIN/lib on the binary)
 find "$DEB_DIR/usr/lib/animedives/lib" -name "*.so" -exec patchelf --remove-rpath {} \; 2>/dev/null || true
-find "$DEB_DIR/usr/lib/animedives" -maxdepth 1 -type f -exec patchelf --remove-rpath {} \; 2>/dev/null || true
 
 cat > "$DEB_DIR/usr/bin/animedives" << 'WRAPPER'
 #!/bin/sh
