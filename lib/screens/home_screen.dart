@@ -33,7 +33,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
   bool _isInitialized = false;
-  bool _showMature = false;
+  // Three-state category filter: null = All (anime + hentai), false = Anime only,
+  // true = Hentai only. Replaces the previous single _showMature boolean.
+  bool? _showMature;
 
   @override
   void initState() {
@@ -74,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return _sites
         .where(
           (s) =>
-              (_showMature || !s.mature) &&
+              (_showMature == null || s.mature == _showMature!) &&
               (q.isEmpty ||
                   s.name.toLowerCase().contains(q) ||
                   s.domain.toLowerCase().contains(q)),
@@ -404,21 +406,25 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   );
 
-  /// Category filter chips (Anime / Hentai) rendered above the search bar.
+  /// Category filter chips (All / Anime / Hentai) rendered above the search bar.
   Widget _filterBar() => SliverPadding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
         sliver: SliverToBoxAdapter(
           child: Row(
             children: [
-              _categoryChip('Anime', !_showMature, () {
+              _categoryChip('All', _showMature == null, () {
+                setState(() => _showMature = null);
+              }, isMature: false),
+              const SizedBox(width: 12),
+              _categoryChip('Anime', _showMature == false, () {
                 setState(() => _showMature = false);
               }, isMature: false),
               const SizedBox(width: 12),
-              _categoryChip('Hentai', _showMature, () {
+              _categoryChip('Hentai', _showMature == true, () {
                 setState(() => _showMature = true);
               }, isMature: true),
               const Spacer(),
-              if (_showMature)
+              if (_showMature == true)
                 Icon(Icons.warning_amber_rounded,
                     color: _animedives(context).mutedForeground, size: 16),
             ],

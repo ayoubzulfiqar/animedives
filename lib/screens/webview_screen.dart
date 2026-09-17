@@ -31,6 +31,23 @@ const LinearGradient kBrandGradient = LinearGradient(
 /// exits HTML5 fullscreen.
 const String _fullscreenChannel = 'animedivesFullscreen';
 
+/// Name of the JavaScript channel used to notify Dart when the page's URL
+/// changes via SPA (single-page-app) navigation - i.e. the site calls
+/// `history.pushState()` / `history.replaceState()` or responds to back/forward
+/// without a full document load. Without this, `onPageStarted` /
+/// `onPageFinished` never fire for in-page navigations, so the history
+/// recorder never sees the episode URL and the resume point is lost.
+const String _urlChangeChannel = 'animedivesUrlChange';
+
+/// Name of the JavaScript channel used to notify Dart of the real document
+/// title as soon as it is available, so history labels are accurate even on
+/// fast SPA transitions where `onPageFinished` is delayed.
+const String _titleChannel = 'animedivesTitle';
+
+/// Polling interval for the SPA URL-change detector injected into the page.
+/// Fast enough to catch episode switches without burning battery.
+const Duration _kUrlPollInterval = Duration(milliseconds: 500);
+
 /// Minimum gap between watch-history persistence writes, so rapid in-page
 /// navigations don't spam SharedPreferences.
 const Duration _kHistoryWriteInterval = Duration(seconds: 3);
@@ -102,6 +119,18 @@ class _WebviewScreenState extends State<WebviewScreen>
         _fullscreenChannel,
         onMessageReceived: _onFullscreenMessage,
       )
+      // SPA URL-change channel: keeps the resume point in sync with the actual
+      // episode page even when the site navigates via pushState.
+      ..addJavaScriptChannel(
+        _urlChangeChannel,
+        onMessageReceived: _onUrlChangeMessage,
+      )
+      // Title channel: captures the document title immediately after load so
+      // the history label is accurate on fast SPA transitions.
+      ..addJavaScriptChannel(
+        _titleChannel,
+        onMessageReceived: _onTitleMessage,
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           // Ad-blocking navigation shield (see [_onNavigationRequest]).
@@ -172,6 +201,12 @@ class _WebviewScreenState extends State<WebviewScreen>
       final androidController =
           _controller.platform as AndroidWebViewController;
       androidController.setMixedContentMode(MixedContentMode.compatibilityMode);
+      // Cache is intentionally preserved (default Android WebView cache mode
+      // is LOAD_DEFAULT — resources are cached to disk and reused on revisit).
+      // We deliberately do NOT call clearCache() here or in dispose() so that
+      // site data (logins, session state, episode progress) survives across
+      // WebView sessions. The commented-out clearCache in dispose() confirms
+      // this is already the case.
     }
   }
 
@@ -497,10 +532,65 @@ class _WebviewScreenState extends State<WebviewScreen>
       // Injection failure is non-fatal; page still works without clutter hiding
     }
     try {
+      await _injectUrlChangeDetector();
+    } catch (_) {
+      // URL-change detector injection failure is non-fatal
+    }
+    try {
       await _injectFullscreenListener();
     } catch (_) {
       // Fullscreen listener injection failure is non-fatal
     }
+  }
+
+  /// Injects a script that polls `window.location.href` on an interval and posts
+  /// to [_urlChangeChannel] whenever it changes. This is the key mechanism for
+  /// tracking episode navigation on SPA streaming sites: the site rewrites the
+  /// URL via `history.pushState()` without a full document load, so
+  /// `onPageStarted` / `onPageFinished` never fire and `_currentUrl` would
+  /// otherwise stay frozen at the last full page load (often the anime listing
+  /// page, which is filtered as generic and never recorded).
+  ///
+  /// It also intercepts pushState/replaceState to catch changes immediately
+  /// rather than waiting for the next poll tick.
+  Future<void> _injectUrlChangeDetector() async {
+    final intervalMs = _kUrlPollInterval.inMilliseconds;
+    await _controller.runJavaScript('''
+(function() {
+  if (window.__animedivesUrlBound) return;
+  window.__animedivesUrlBound = true;
+  var last = window.location.href;
+  function check() {
+    var cur = window.location.href;
+    if (cur !== last) {
+      last = cur;
+      $_urlChangeChannel.postMessage(cur);
+    }
+    requestAnimationFrame(check) || setTimeout(check, $intervalMs);
+  }
+  var origPush = history.pushState;
+  history.pushState = function(state, title, url) {
+    var result = origPush.apply(this, arguments);
+    var href = typeof url === 'string' && url ? url : window.location.href;
+    if (href !== last) {
+      last = href;
+      $_urlChangeChannel.postMessage(href);
+    }
+    return result;
+  };
+  var origReplace = history.replaceState;
+  history.replaceState = function(state, title, url) {
+    var result = origReplace.apply(this, arguments);
+    var href = typeof url === 'string' && url ? url : window.location.href;
+    if (href !== last) {
+      last = href;
+      $_urlChangeChannel.postMessage(href);
+    }
+    return result;
+  };
+  check();
+})();
+''');
   }
 
   /// Installs a listener that posts 'enter'/'exit' to the Dart side whenever the
@@ -521,8 +611,26 @@ class _WebviewScreenState extends State<WebviewScreen>
 ''');
   }
 
+  /// Handles SPA URL-change messages from the injected polling script.
+  /// Updates [_currentUrl] so history recording always targets the real page.
+  void _onUrlChangeMessage(JavaScriptMessage message) {
+    final url = message.message;
+    if (url.isEmpty || url == _currentUrl) return;
+    _currentUrl = url;
+    _recordHistory();
+  }
+
+  /// Handles title messages sent from the page after load or DOM changes.
+  /// Keeps the history label accurate without waiting for onPageFinished.
+  void _onTitleMessage(JavaScriptMessage message) {
+    final title = message.message.replaceAll('\\', '').trim();
+    if (title.isNotEmpty && title != _currentTitle) {
+      _currentTitle = title;
+      _recordHistory();
+    }
+  }
+
   /// ---------------------------------------------------------------------------
-  /// Native fullscreen handling.
   ///
   /// When the page requests HTML5 fullscreen (the video player goes fullscreen)
   /// the JS listener above posts 'enter', so we rotate to landscape and hide the
