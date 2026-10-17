@@ -5,9 +5,14 @@ import 'package:animedives/models/site_config.dart';
 void main() {
   group('AnimeSiteConfig', () {
     test('domainFromUrl extracts bare host', () {
-      expect(AnimeSiteConfig.domainFromUrl('https://www.animeparadise.moe/'),
-          'www.animeparadise.moe');
-      expect(AnimeSiteConfig.domainFromUrl('https://anihq.cc/home/'), 'anihq.cc');
+      expect(
+        AnimeSiteConfig.domainFromUrl('https://www.animeparadise.moe/'),
+        'www.animeparadise.moe',
+      );
+      expect(
+        AnimeSiteConfig.domainFromUrl('https://anihq.cc/home/'),
+        'anihq.cc',
+      );
       expect(AnimeSiteConfig.domainFromUrl('not-a-url'), '');
       expect(AnimeSiteConfig.domainFromUrl(''), '');
     });
@@ -143,14 +148,15 @@ void main() {
     });
 
     test('clutter sandbox CSS does not disable user-select on form inputs', () {
-      final css = buildClutterCss(const AnimeSiteConfig(
-        name: 'Test',
-        homepageUrl: 'https://test.com',
-        domain: 'test.com',
-      ));
+      final css = buildClutterCss(
+        const AnimeSiteConfig(
+          name: 'Test',
+          homepageUrl: 'https://test.com',
+          domain: 'test.com',
+        ),
+      );
       expect(css, contains('input, textarea, [contenteditable="true"]'));
       expect(css, contains('user-select: auto !important;'));
     });
   });
 }
-

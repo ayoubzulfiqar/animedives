@@ -97,17 +97,17 @@ class _HomeScreenState extends State<HomeScreen> {
     return list;
   }
 
-
   Future<void> _openSite(AnimeSiteConfig site) async {
     // Opening a provider always starts at its homepage; per-anime resume points
     // are listed on the dedicated Continue Watching screen.
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => WebviewScreen(site: site)),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => WebviewScreen(site: site)));
   }
 
   Future<void> _resumeHistory(WatchHistoryEntry entry) async {
-    final site = Get.find<HistoryController>().findSiteByDomain(entry.domain) ??
+    final site =
+        Get.find<HistoryController>().findSiteByDomain(entry.domain) ??
         AnimeSiteConfig.auto(
           name: entry.providerName,
           homepageUrl: Uri.tryParse(entry.domain)?.hasScheme == true
@@ -348,7 +348,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-
   }
 
   Widget _appBar() => SliverPadding(
@@ -425,9 +424,9 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           IconButton(
             tooltip: 'Continue watching',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const HistoryScreen()),
-            ),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const HistoryScreen())),
             icon: Icon(
               Icons.history_rounded,
               color: _scheme(context).onSurface,
@@ -572,7 +571,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
                   itemCount: entries.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 12),
                   itemBuilder: (ctx, i) {
                     final entry = entries[i];
                     return _ContinueWatchingCard(
@@ -591,37 +591,43 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Category filter chips (All / Anime / Hentai) rendered above the search bar.
   Widget _filterBar() => SliverPadding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-        sliver: SliverToBoxAdapter(
-          child: Row(
-            children: [
-              _categoryChip('All', _showMature == null, () {
-                setState(() => _showMature = null);
-              }, isMature: false),
-              const SizedBox(width: 12),
-              _categoryChip('Anime', _showMature == false, () {
-                setState(() => _showMature = false);
-              }, isMature: false),
-              const SizedBox(width: 12),
-              _categoryChip('Hentai', _showMature == true, () {
-                setState(() => _showMature = true);
-              }, isMature: true),
-              const Spacer(),
-              if (_showMature == true)
-                Icon(Icons.warning_amber_rounded,
-                    color: _animedives(context).mutedForeground, size: 16),
-            ],
-          ),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+    sliver: SliverToBoxAdapter(
+      child: Row(
+        children: [
+          _categoryChip('All', _showMature == null, () {
+            setState(() => _showMature = null);
+          }, isMature: false),
+          const SizedBox(width: 12),
+          _categoryChip('Anime', _showMature == false, () {
+            setState(() => _showMature = false);
+          }, isMature: false),
+          const SizedBox(width: 12),
+          _categoryChip('Hentai', _showMature == true, () {
+            setState(() => _showMature = true);
+          }, isMature: true),
+          const Spacer(),
+          if (_showMature == true)
+            Icon(
+              Icons.warning_amber_rounded,
+              color: _animedives(context).mutedForeground,
+              size: 16,
+            ),
+        ],
+      ),
+    ),
+  );
 
   Widget _categoryChip(
-      String label, bool selected, VoidCallback onTap,
-      {required bool isMature}) {
+    String label,
+    bool selected,
+    VoidCallback onTap, {
+    required bool isMature,
+  }) {
     final Color color = selected
         ? (isMature
-            ? _animedives(context).destructive
-            : _scheme(context).primary)
+              ? _animedives(context).destructive
+              : _scheme(context).primary)
         : _animedives(context).border;
     return GestureDetector(
       onTap: onTap,
@@ -630,8 +636,8 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(
           color: selected
               ? (isMature
-                  ? _animedives(context).destructive.withValues(alpha: 0.15)
-                  : _scheme(context).primary.withValues(alpha: 0.15))
+                    ? _animedives(context).destructive.withValues(alpha: 0.15)
+                    : _scheme(context).primary.withValues(alpha: 0.15))
               : _scheme(context).surfaceContainerHighest,
           border: Border.all(color: color, width: selected ? 2 : 1),
           borderRadius: BorderRadius.circular(20),
@@ -698,8 +704,10 @@ class _HomeScreenState extends State<HomeScreen> {
               Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: _scheme(context).surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8),
@@ -721,7 +729,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
 
   Widget _grid() => SliverPadding(
     padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
@@ -837,8 +844,9 @@ class _ProviderCardState extends State<ProviderCard> {
                         minWidth: 32,
                         minHeight: 32,
                       ),
-                      tooltip:
-                          isFav ? 'Unfavorite provider' : 'Favorite provider',
+                      tooltip: isFav
+                          ? 'Unfavorite provider'
+                          : 'Favorite provider',
                       icon: Icon(
                         isFav ? Icons.star_rounded : Icons.star_border_rounded,
                         color: isFav
@@ -1025,10 +1033,7 @@ class _ContinueWatchingCard extends StatefulWidget {
   final WatchHistoryEntry entry;
   final VoidCallback onTap;
 
-  const _ContinueWatchingCard({
-    required this.entry,
-    required this.onTap,
-  });
+  const _ContinueWatchingCard({required this.entry, required this.onTap});
 
   @override
   State<_ContinueWatchingCard> createState() => _ContinueWatchingCardState();
@@ -1130,4 +1135,3 @@ class _ContinueWatchingCardState extends State<_ContinueWatchingCard> {
     );
   }
 }
-

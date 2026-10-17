@@ -75,21 +75,19 @@ class AnimedivesColors extends ThemeExtension<AnimedivesColors> {
     Color? purpleAccent,
     Color? cardSurface,
     Color? cardBorder,
-  }) =>
-      AnimedivesColors(
-        mutedForeground: mutedForeground ?? this.mutedForeground,
-        border: border ?? this.border,
-        input: input ?? this.input,
-        accent: accent ?? this.accent,
-        accentForeground: accentForeground ?? this.accentForeground,
-        destructive: destructive ?? this.destructive,
-        destructiveForeground:
-            destructiveForeground ?? this.destructiveForeground,
-        cyanAccent: cyanAccent ?? this.cyanAccent,
-        purpleAccent: purpleAccent ?? this.purpleAccent,
-        cardSurface: cardSurface ?? this.cardSurface,
-        cardBorder: cardBorder ?? this.cardBorder,
-      );
+  }) => AnimedivesColors(
+    mutedForeground: mutedForeground ?? this.mutedForeground,
+    border: border ?? this.border,
+    input: input ?? this.input,
+    accent: accent ?? this.accent,
+    accentForeground: accentForeground ?? this.accentForeground,
+    destructive: destructive ?? this.destructive,
+    destructiveForeground: destructiveForeground ?? this.destructiveForeground,
+    cyanAccent: cyanAccent ?? this.cyanAccent,
+    purpleAccent: purpleAccent ?? this.purpleAccent,
+    cardSurface: cardSurface ?? this.cardSurface,
+    cardBorder: cardBorder ?? this.cardBorder,
+  );
 
   @override
   AnimedivesColors lerp(ThemeExtension<AnimedivesColors>? other, double t) {
@@ -99,10 +97,17 @@ class AnimedivesColors extends ThemeExtension<AnimedivesColors> {
       border: Color.lerp(border, other.border, t)!,
       input: Color.lerp(input, other.input, t)!,
       accent: Color.lerp(accent, other.accent, t)!,
-      accentForeground: Color.lerp(accentForeground, other.accentForeground, t)!,
+      accentForeground: Color.lerp(
+        accentForeground,
+        other.accentForeground,
+        t,
+      )!,
       destructive: Color.lerp(destructive, other.destructive, t)!,
-      destructiveForeground:
-          Color.lerp(destructiveForeground, other.destructiveForeground, t)!,
+      destructiveForeground: Color.lerp(
+        destructiveForeground,
+        other.destructiveForeground,
+        t,
+      )!,
       cyanAccent: Color.lerp(cyanAccent, other.cyanAccent, t)!,
       purpleAccent: Color.lerp(purpleAccent, other.purpleAccent, t)!,
       cardSurface: Color.lerp(cardSurface, other.cardSurface, t)!,
@@ -141,7 +146,6 @@ const AnimedivesColors darkAnimedivesColors = AnimedivesColors(
 
 const AnimedivesColors _lightAnimedives = lightAnimedivesColors;
 const AnimedivesColors _darkAnimedives = darkAnimedivesColors;
-
 
 /// Applies Bricolage Grotesque typography with crisp modern metrics.
 TextTheme _bricolage(TextTheme base) =>

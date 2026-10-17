@@ -47,7 +47,8 @@ class AnimedivesApp extends StatelessWidget {
       // Evaluate effective brightness to guarantee high-contrast system icons
       final platformBrightness =
           WidgetsBinding.instance.platformDispatcher.platformBrightness;
-      final isDark = mode == ThemeMode.dark ||
+      final isDark =
+          mode == ThemeMode.dark ||
           (mode == ThemeMode.system && platformBrightness == Brightness.dark);
 
       SystemChrome.setSystemUIOverlayStyle(
@@ -55,8 +56,9 @@ class AnimedivesApp extends StatelessWidget {
           statusBarColor: Colors.transparent,
           systemNavigationBarColor: Colors.transparent,
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-          systemNavigationBarIconBrightness:
-              isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarIconBrightness: isDark
+              ? Brightness.light
+              : Brightness.dark,
         ),
       );
 
@@ -66,10 +68,7 @@ class AnimedivesApp extends StatelessWidget {
         theme: lightTheme,
         darkTheme: darkTheme,
         themeMode: mode,
-        home: HomeScreen(
-          themeMode: mode,
-          onCycleTheme: history.cycleThemeMode,
-        ),
+        home: HomeScreen(themeMode: mode, onCycleTheme: history.cycleThemeMode),
       );
     });
   }

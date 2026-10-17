@@ -131,10 +131,7 @@ class _WebviewScreenState extends State<WebviewScreen>
       )
       // Title channel: captures the document title immediately after load so
       // the history label is accurate on fast SPA transitions.
-      ..addJavaScriptChannel(
-        _titleChannel,
-        onMessageReceived: _onTitleMessage,
-      )
+      ..addJavaScriptChannel(_titleChannel, onMessageReceived: _onTitleMessage)
       ..setNavigationDelegate(
         NavigationDelegate(
           // Ad-blocking navigation shield (see [_onNavigationRequest]).
@@ -312,7 +309,6 @@ class _WebviewScreenState extends State<WebviewScreen>
   /// Returns true when [host] is the site itself or a known-good CDN host.
   bool _isHostAllowed(String host) => isHostAllowed(host, widget.site);
 
-
   /// Persists the current page as a resume point for the specific anime being
   /// watched (keyed by URL slug, so multiple animes on one site stay separate).
   ///
@@ -480,7 +476,8 @@ class _WebviewScreenState extends State<WebviewScreen>
   void _showShieldStatsModal(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final animedives = Theme.of(context).extension<AnimedivesColors>()!;
-    final totalBlocked = widget.site.hideSelectors.length + globalHideSelectors.length;
+    final totalBlocked =
+        widget.site.hideSelectors.length + globalHideSelectors.length;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -546,7 +543,11 @@ class _WebviewScreenState extends State<WebviewScreen>
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.block_rounded, color: Color(0xFFFF3366), size: 18),
+                      const Icon(
+                        Icons.block_rounded,
+                        color: Color(0xFFFF3366),
+                        size: 18,
+                      ),
                       const SizedBox(width: 10),
                       Text(
                         'Clutter & Pop-up Selectors',
@@ -565,7 +566,11 @@ class _WebviewScreenState extends State<WebviewScreen>
                   const Divider(height: 20),
                   Row(
                     children: [
-                      const Icon(Icons.verified_user_rounded, color: kBrandBlue, size: 18),
+                      const Icon(
+                        Icons.verified_user_rounded,
+                        color: kBrandBlue,
+                        size: 18,
+                      ),
                       const SizedBox(width: 10),
                       Text(
                         'Allowed Video Hosts',
@@ -590,11 +595,9 @@ class _WebviewScreenState extends State<WebviewScreen>
     );
   }
 
-
   /// Per-site + global clutter selectors combined with the sandbox-hardening
   /// rules, returned as a single stylesheet string.
   String get _clutterCss => buildClutterCss(widget.site);
-
 
   /// Injects the clutter-busting CSS, the fullscreen listener and a viewport
   /// reset as early as the DOM allows. The style is applied the instant
@@ -845,9 +848,7 @@ class _WebviewScreenState extends State<WebviewScreen>
   Widget _webViewStack() => Stack(
     key: const ValueKey('animedives_webview_stack'),
     children: [
-      RepaintBoundary(
-        child: WebViewWidget(controller: _controller),
-      ),
+      RepaintBoundary(child: WebViewWidget(controller: _controller)),
       _loadingOverlay(),
       if (_hasError) _errorOverlay(),
       if (!_isFullscreen)
@@ -949,7 +950,6 @@ class _WebviewScreenState extends State<WebviewScreen>
     );
   }
 
-
   /// Custom overlay spinner that fades out only when the page is fully loaded
   /// AND the cleaner CSS has been injected.
   Widget _loadingOverlay() {
@@ -971,10 +971,7 @@ class _WebviewScreenState extends State<WebviewScreen>
               const SizedBox(height: 18),
               Text(
                 'Loading ${widget.site.name}...',
-                style: TextStyle(
-                  color: mutedColor,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: mutedColor, fontSize: 14),
               ),
               const SizedBox(height: 6),
               SizedBox(
@@ -1023,11 +1020,7 @@ class _WebviewScreenState extends State<WebviewScreen>
                 'Could not reach ${widget.site.domain}. Check your connection '
                 'and try again.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: mutedColor,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
+                style: TextStyle(color: mutedColor, fontSize: 14, height: 1.5),
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(

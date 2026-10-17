@@ -4,15 +4,16 @@ import 'package:get/get.dart';
 import '../controllers/history_controller.dart';
 import '../models/site_config.dart';
 import '../models/watch_history.dart';
-import '../provider.dart';
 import '../themes.dart';
 import 'webview_screen.dart';
 
 /// Convenience accessors for the theme tokens defined in [themes.dart].
 ColorScheme _scheme(BuildContext c) => Theme.of(c).colorScheme;
 AnimedivesColors _animedives(BuildContext c) =>
-    Theme.of(c).extension<AnimedivesColors>()!;
-
+    Theme.of(c).extension<AnimedivesColors>() ??
+    (Theme.of(c).brightness == Brightness.dark
+        ? darkAnimedivesColors
+        : lightAnimedivesColors);
 
 /// Safely extracts the first user-perceived character (grapheme cluster) of
 /// [text] for the avatar initial, handling emoji flags, combining diacritics
@@ -39,7 +40,6 @@ class HistoryScreen extends StatelessWidget {
               : 'https://${entry.domain}',
         );
   }
-
 
   Future<void> _resume(BuildContext context, WatchHistoryEntry entry) async {
     final site = _siteFor(entry);
@@ -255,14 +255,14 @@ class HistoryScreen extends StatelessWidget {
                       return const SizedBox.shrink();
                     }
                     final entry = history.entries[index];
-                  return _HistoryRow(
-                    key: ValueKey('row_${entry.id}'),
-                    entry: entry,
-                    // Use the scoped builder context 'ctx' so Navigator/scaffold
-                    // lookups resolve from the precise list element.
-                    onTap: () => _resume(ctx, entry),
-                    onDelete: () => _deleteWithUndo(ctx, entry),
-                  );
+                    return _HistoryRow(
+                      key: ValueKey('row_${entry.id}'),
+                      entry: entry,
+                      // Use the scoped builder context 'ctx' so Navigator/scaffold
+                      // lookups resolve from the precise list element.
+                      onTap: () => _resume(ctx, entry),
+                      onDelete: () => _deleteWithUndo(ctx, entry),
+                    );
                   }, childCount: history.entries.length),
                 ),
               );

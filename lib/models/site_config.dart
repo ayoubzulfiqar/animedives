@@ -81,25 +81,31 @@ class AnimeSiteConfig {
 
   /// Serializes the config to JSON (used to persist custom user entries).
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'homepageUrl': homepageUrl,
-        'domain': domain,
-        'logoUrl': logoUrl,
-        'hideSelectors': hideSelectors,
-        'safeCdnDomains': safeCdnDomains,
-        'mature': mature,
-      };
+    'name': name,
+    'homepageUrl': homepageUrl,
+    'domain': domain,
+    'logoUrl': logoUrl,
+    'hideSelectors': hideSelectors,
+    'safeCdnDomains': safeCdnDomains,
+    'mature': mature,
+  };
 
   /// De-serializes a config created with [toJson].
-  factory AnimeSiteConfig.fromJson(Map<String, dynamic> json) => AnimeSiteConfig(
-        name: json['name'] as String,
-        homepageUrl: json['homepageUrl'] as String,
-        domain: json['domain'] as String,
-        logoUrl: json['logoUrl'] as String? ?? '',
-        hideSelectors: (json['hideSelectors'] as List?)?.map((e) => e as String).toList() ?? const [],
-        safeCdnDomains: (json['safeCdnDomains'] as List?)?.map((e) => e as String).toList() ?? const [],
-        mature: json['mature'] as bool? ?? false,
-      );
+  factory AnimeSiteConfig.fromJson(
+    Map<String, dynamic> json,
+  ) => AnimeSiteConfig(
+    name: json['name'] as String,
+    homepageUrl: json['homepageUrl'] as String,
+    domain: json['domain'] as String,
+    logoUrl: json['logoUrl'] as String? ?? '',
+    hideSelectors:
+        (json['hideSelectors'] as List?)?.map((e) => e as String).toList() ??
+        const [],
+    safeCdnDomains:
+        (json['safeCdnDomains'] as List?)?.map((e) => e as String).toList() ??
+        const [],
+    mature: json['mature'] as bool? ?? false,
+  );
 
   /// Convenience: JSON string for SharedPreferences persistence.
   String toJsonString() => jsonEncode(toJson());
@@ -183,12 +189,7 @@ const List<AnimeSiteConfig> templateSites = [
     name: 'Template: Stream Portal',
     homepageUrl: 'https://example-stream.one/home',
     domain: 'example-stream.one',
-    hideSelectors: [
-      '.site-header',
-      '.site-footer',
-      '#top-ad',
-      '.promo-banner',
-    ],
+    hideSelectors: ['.site-header', '.site-footer', '#top-ad', '.promo-banner'],
     safeCdnDomains: ['cdn.example-stream.one'],
   ),
 
@@ -228,7 +229,10 @@ bool isHostAllowed(String host, AnimeSiteConfig site) {
   if (host.isEmpty) return false;
   final h = host.trim().toLowerCase().replaceFirst(RegExp(r'^www\.'), '');
 
-  final d = site.domain.trim().toLowerCase().replaceFirst(RegExp(r'^www\.'), '');
+  final d = site.domain.trim().toLowerCase().replaceFirst(
+    RegExp(r'^www\.'),
+    '',
+  );
   if (d.isNotEmpty && (h == d || h.endsWith('.$d'))) {
     return true;
   }
@@ -269,4 +273,3 @@ input, textarea, [contenteditable="true"] {
 }''';
   return '$rules\n$sandbox';
 }
-

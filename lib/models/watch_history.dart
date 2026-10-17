@@ -58,13 +58,13 @@ class WatchHistoryEntry {
   );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'domain': domain,
-        'providerName': providerName,
-        'title': title,
-        'url': url,
-        'lastWatchedAt': lastWatchedAt,
-      };
+    'id': id,
+    'domain': domain,
+    'providerName': providerName,
+    'title': title,
+    'url': url,
+    'lastWatchedAt': lastWatchedAt,
+  };
 
   factory WatchHistoryEntry.fromJson(Map<String, dynamic> json) =>
       WatchHistoryEntry(
@@ -109,8 +109,10 @@ String animeHistoryId(String domain, String url) {
     // Strip trailing episode/chapter markers from each segment so
     // "one-piece-ep-5" becomes "one-piece" and "episode-3" becomes "" (then
     // filtered out as empty).
-    final episodeStrip =
-        RegExp(r'[-_]?(?:ep|episode|ch|chapter)[-_]?\d+$', caseSensitive: false);
+    final episodeStrip = RegExp(
+      r'[-_]?(?:ep|episode|ch|chapter)[-_]?\d+$',
+      caseSensitive: false,
+    );
     final cleaned = <String>[];
     for (final s in segments) {
       final stripped = s.replaceAll(episodeStrip, '').trim();
@@ -120,15 +122,31 @@ String animeHistoryId(String domain, String url) {
     // Exclude generic navigation segments and pure episode/chapter markers
     // so the anime title wins.
     const generic = {
-      'home', 'homepage', 'index', 'watch', 'anime', 'tv', 'movies',
-      'series', 'browse', 'latest', 'popular', 'trending',
-      'discover', 'search',
+      'home',
+      'homepage',
+      'index',
+      'watch',
+      'anime',
+      'tv',
+      'movies',
+      'series',
+      'browse',
+      'latest',
+      'popular',
+      'trending',
+      'discover',
+      'search',
     };
     final candidates = cleaned.where((s) {
       final lower = s.toLowerCase();
       if (generic.contains(lower)) return false;
       // Skip standalone episode/chapter markers left after stripping.
-      if (RegExp(r'^(ep|episode|ch|chapter)$', caseSensitive: false).hasMatch(lower)) return false;
+      if (RegExp(
+        r'^(ep|episode|ch|chapter)$',
+        caseSensitive: false,
+      ).hasMatch(lower)) {
+        return false;
+      }
       return true;
     }).toList();
 
@@ -177,4 +195,3 @@ String relativeTime(int ts) {
   if (diff < 604800000) return '${(diff / 86400000).floor()}d ago';
   return '${(diff / 604800000).floor()}w ago';
 }
-

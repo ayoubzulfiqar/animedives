@@ -18,7 +18,10 @@ void main() {
     expect(controller.isFavorite('anihq.cc'), isFalse);
     await controller.toggleFavorite('anihq.cc');
     expect(controller.isFavorite('anihq.cc'), isTrue);
-    expect(controller.isFavorite('WWW.ANIHQ.CC'), isTrue); // Case & www normalized
+    expect(
+      controller.isFavorite('WWW.ANIHQ.CC'),
+      isTrue,
+    ); // Case & www normalized
 
     await controller.toggleFavorite('anihq.cc');
     expect(controller.isFavorite('anihq.cc'), isFalse);
@@ -44,30 +47,33 @@ void main() {
     expect(reloadedController.themeMode.value, ThemeMode.dark);
   });
 
-  test('HistoryController findSiteByDomain finds default and custom sites', () async {
-    final controller = HistoryController();
-    await controller.loadAll();
+  test(
+    'HistoryController findSiteByDomain finds default and custom sites',
+    () async {
+      final controller = HistoryController();
+      await controller.loadAll();
 
-    // Default site
-    final defaultSite = controller.findSiteByDomain('anihq.cc');
-    expect(defaultSite, isNotNull);
-    expect(defaultSite!.name, 'AniHQ');
+      // Default site
+      final defaultSite = controller.findSiteByDomain('anihq.cc');
+      expect(defaultSite, isNotNull);
+      expect(defaultSite!.name, 'AniHQ');
 
-    // Custom site
-    final customSite = AnimeSiteConfig(
-      name: 'CustomStream',
-      homepageUrl: 'https://custom.moe',
-      domain: 'custom.moe',
-    );
-    await controller.saveCustomSites([customSite]);
+      // Custom site
+      final customSite = AnimeSiteConfig(
+        name: 'CustomStream',
+        homepageUrl: 'https://custom.moe',
+        domain: 'custom.moe',
+      );
+      await controller.saveCustomSites([customSite]);
 
-    final resolved = controller.findSiteByDomain('custom.moe');
-    expect(resolved, isNotNull);
-    expect(resolved!.name, 'CustomStream');
+      final resolved = controller.findSiteByDomain('custom.moe');
+      expect(resolved, isNotNull);
+      expect(resolved!.name, 'CustomStream');
 
-    // Subdomain matching on normalized domain
-    final resolvedWithWww = controller.findSiteByDomain('www.custom.moe');
-    expect(resolvedWithWww, isNotNull);
-    expect(resolvedWithWww!.name, 'CustomStream');
-  });
+      // Subdomain matching on normalized domain
+      final resolvedWithWww = controller.findSiteByDomain('www.custom.moe');
+      expect(resolvedWithWww, isNotNull);
+      expect(resolvedWithWww!.name, 'CustomStream');
+    },
+  );
 }

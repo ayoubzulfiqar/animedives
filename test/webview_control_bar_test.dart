@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+// ignore: depend_on_referenced_packages
 import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';
 import 'package:animedives/controllers/history_controller.dart';
 import 'package:animedives/models/site_config.dart';
@@ -16,9 +17,13 @@ class FakePlatformWebViewController extends PlatformWebViewController {
   @override
   Future<void> setUserAgent(String? userAgent) async {}
   @override
-  Future<void> setPlatformNavigationDelegate(PlatformNavigationDelegate handler) async {}
+  Future<void> setPlatformNavigationDelegate(
+    PlatformNavigationDelegate handler,
+  ) async {}
   @override
-  Future<void> addJavaScriptChannel(JavaScriptChannelParams javaScriptChannelParams) async {}
+  Future<void> addJavaScriptChannel(
+    JavaScriptChannelParams javaScriptChannelParams,
+  ) async {}
   @override
   Future<void> removeJavaScriptChannel(String javaScriptChannelName) async {}
   @override
@@ -33,13 +38,16 @@ class FakePlatformWebViewWidget extends PlatformWebViewWidget {
   FakePlatformWebViewWidget(super.params) : super.implementation();
 
   @override
-  Widget build(BuildContext context) => const SizedBox(key: ValueKey('fake_webview_widget'));
+  Widget build(BuildContext context) =>
+      const SizedBox(key: ValueKey('fake_webview_widget'));
 }
 
 class FakePlatformNavigationDelegate extends PlatformNavigationDelegate {
   FakePlatformNavigationDelegate(super.params) : super.implementation();
   @override
-  Future<void> setOnNavigationRequest(NavigationRequestCallback onNavigationRequest) async {}
+  Future<void> setOnNavigationRequest(
+    NavigationRequestCallback onNavigationRequest,
+  ) async {}
   @override
   Future<void> setOnPageStarted(PageEventCallback onPageStarted) async {}
   @override
@@ -47,7 +55,9 @@ class FakePlatformNavigationDelegate extends PlatformNavigationDelegate {
   @override
   Future<void> setOnProgress(ProgressCallback onProgress) async {}
   @override
-  Future<void> setOnWebResourceError(WebResourceErrorCallback onWebResourceError) async {}
+  Future<void> setOnWebResourceError(
+    WebResourceErrorCallback onWebResourceError,
+  ) async {}
   @override
   Future<void> setOnHttpError(HttpResponseErrorCallback onHttpError) async {}
 }
@@ -71,17 +81,18 @@ class FakeWebViewPlatform extends WebViewPlatform {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  const MethodChannel channel =
-      MethodChannel('plugins.flutter.io/shared_preferences');
+  const MethodChannel channel = MethodChannel(
+    'plugins.flutter.io/shared_preferences',
+  );
 
   setUp(() {
     WebViewPlatform.instance = FakeWebViewPlatform();
     SharedPreferences.setMockInitialValues({});
     TestWidgetsFlutterBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-      if (call.method == 'getAll') return <String, dynamic>{};
-      return true;
-    });
+          if (call.method == 'getAll') return <String, dynamic>{};
+          return true;
+        });
     Get.put(HistoryController(), permanent: true);
   });
 
@@ -89,30 +100,34 @@ void main() {
     Get.reset();
   });
 
-  testWidgets('WebviewScreen renders floating glass control bar with navigation icons', (WidgetTester tester) async {
-    const site = AnimeSiteConfig(
-      name: 'AnimeTest',
-      homepageUrl: 'https://animetest.moe',
-      domain: 'animetest.moe',
-      hideSelectors: ['#ad1', '.banner'],
-      safeCdnDomains: ['cdn.animetest.moe'],
-    );
+  testWidgets(
+    'WebviewScreen renders floating glass control bar with navigation icons',
+    (WidgetTester tester) async {
+      const site = AnimeSiteConfig(
+        name: 'AnimeTest',
+        homepageUrl: 'https://animetest.moe',
+        domain: 'animetest.moe',
+        hideSelectors: ['#ad1', '.banner'],
+        safeCdnDomains: ['cdn.animetest.moe'],
+      );
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: WebviewScreen(site: site),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpWidget(
+        const MaterialApp(home: WebviewScreen(site: site)),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
 
-    // Verify floating glass control bar exists
-    expect(find.byKey(const ValueKey('webview_floating_controls')), findsOneWidget);
+      // Verify floating glass control bar exists
+      expect(
+        find.byKey(const ValueKey('webview_floating_controls')),
+        findsOneWidget,
+      );
 
-    // Verify navigation buttons
-    expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.arrow_forward_ios_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.shield_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.close_rounded), findsOneWidget);
-  });
+      // Verify navigation buttons
+      expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_forward_ios_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.shield_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+    },
+  );
 }

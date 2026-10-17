@@ -6,17 +6,26 @@ import 'package:animedives/models/watch_history.dart';
 void main() {
   group('animeHistoryId', () {
     test('extracts the anime slug from a nested episode URL', () {
-      final id = animeHistoryId('anihq.cc', 'https://anihq.cc/anime/naruto/episode-3');
+      final id = animeHistoryId(
+        'anihq.cc',
+        'https://anihq.cc/anime/naruto/episode-3',
+      );
       expect(id, 'anihq.cc::naruto');
     });
 
     test('strips compound episode suffixes from slug', () {
-      final id = animeHistoryId('animex.one', 'https://animex.one/anime/one-piece-ep-5');
+      final id = animeHistoryId(
+        'animex.one',
+        'https://animex.one/anime/one-piece-ep-5',
+      );
       expect(id, 'animex.one::one-piece');
     });
 
     test('strips episode markers from last segment', () {
-      final id = animeHistoryId('animepahe.pw', 'https://animepahe.pw/naruto-episode-2');
+      final id = animeHistoryId(
+        'animepahe.pw',
+        'https://animepahe.pw/naruto-episode-2',
+      );
       expect(id, 'animepahe.pw::naruto');
     });
 
@@ -31,7 +40,10 @@ void main() {
     });
 
     test('normalizes www prefix and case in domain', () {
-      final id = animeHistoryId('animeya.cc', 'https://WWW.Animeya.cc/watch/seirei/123');
+      final id = animeHistoryId(
+        'animeya.cc',
+        'https://WWW.Animeya.cc/watch/seirei/123',
+      );
       expect(id, 'animeya.cc::seirei');
     });
 
