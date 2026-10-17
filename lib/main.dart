@@ -11,10 +11,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Register app-wide controllers before the first frame so the home screen
-  // can read watch history immediately. Get.put (not lazy) triggers onInit
-  // -> the history is loaded from SharedPreferences up front. [permanent: true]
-  // keeps the controller alive across route pushes/pops so the in-memory list
-  // (and its disk read) is never re-initialized on every navigation.
+  // can read watch history and persistent settings immediately.
   Get.put(HistoryController(), permanent: true);
 
   // Modern edge-to-edge look on Android (draw behind status/nav bars).
@@ -29,50 +26,51 @@ void main() async {
     DeviceOrientation.landscapeRight,
   ]);
 
-  // Transparent system bar icons so the theme reads cleanly in either mode.
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      systemNavigationBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      systemNavigationBarIconBrightness: Brightness.dark,
-    ),
-  );
-
   runApp(const AnimedivesApp());
 }
 
-/// Root application widget. Holds the active [ThemeMode] so the user can switch
-/// between light, dark and system, and wires both [lightTheme] and [darkTheme].
-class AnimedivesApp extends StatefulWidget {
+/// Root application widget. Listens reactively to [HistoryController.themeMode]
+/// so the user's light/dark/system preference is persisted across sessions and
+/// system UI bar icon contrast adjusts dynamically.
+class AnimedivesApp extends StatelessWidget {
   const AnimedivesApp({super.key});
 
   @override
-  State<AnimedivesApp> createState() => _AnimedivesAppState();
-}
-
-class _AnimedivesAppState extends State<AnimedivesApp> {
-  ThemeMode _themeMode = ThemeMode.system;
-
-  void _cycleTheme() {
-    setState(() {
-      _themeMode = switch (_themeMode) {
-        ThemeMode.system => ThemeMode.light,
-        ThemeMode.light => ThemeMode.dark,
-        ThemeMode.dark => ThemeMode.system,
-      };
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      title: 'Animedives',
-      debugShowCheckedModeBanner: false,
-      theme: lightTheme,
-      darkTheme: darkTheme,
-      themeMode: _themeMode,
-      home: HomeScreen(themeMode: _themeMode, onCycleTheme: _cycleTheme),
-    );
+    // Ensure HistoryController is registered even when running standalone tests
+    final history = Get.isRegistered<HistoryController>()
+        ? Get.find<HistoryController>()
+        : Get.put(HistoryController(), permanent: true);
+
+    return Obx(() {
+      final mode = history.themeMode.value;
+      // Evaluate effective brightness to guarantee high-contrast system icons
+      final platformBrightness =
+          WidgetsBinding.instance.platformDispatcher.platformBrightness;
+      final isDark = mode == ThemeMode.dark ||
+          (mode == ThemeMode.system && platformBrightness == Brightness.dark);
+
+      SystemChrome.setSystemUIOverlayStyle(
+        SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          systemNavigationBarColor: Colors.transparent,
+          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarIconBrightness:
+              isDark ? Brightness.light : Brightness.dark,
+        ),
+      );
+
+      return GetMaterialApp(
+        title: 'Animedives',
+        debugShowCheckedModeBanner: false,
+        theme: lightTheme,
+        darkTheme: darkTheme,
+        themeMode: mode,
+        home: HomeScreen(
+          themeMode: mode,
+          onCycleTheme: history.cycleThemeMode,
+        ),
+      );
+    });
   }
 }

@@ -1,13 +1,18 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/site_config.dart';
 import '../models/watch_history.dart';
+import '../provider.dart';
 
-/// Storage key under which the list of [WatchHistoryEntry] rows is persisted.
+/// Storage keys for app data persistence.
 const String _kHistoryPrefsKey = 'animedives.watch_history.v2';
+const String _kThemePrefsKey = 'animedives.theme_mode.v1';
+const String _kFavoritesPrefsKey = 'animedives.favorite_sites.v1';
+const String _kCustomSitesPrefsKey = 'animedives.custom_sites.v1';
 
 /// Maximum number of history entries kept. Older entries beyond this are
 /// dropped on write so the persisted JSON array cannot grow without bound.
@@ -16,52 +21,121 @@ const int _kMaxHistoryEntries = 200;
 /// Normalizes a domain for comparison: trims, lowercases, and strips a leading
 /// "www." so "WWW.AniHQ.cc" and "anihq.cc" group together everywhere (lookup,
 /// restore, and clear). This is the single source of truth for domain
-/// normalization - the UI layer imports and reuses it rather than duplicating.
+/// normalization across the app.
 String normalizeDomain(String domain) =>
     domain.trim().toLowerCase().replaceFirst(RegExp(r'^www\.'), '');
 
-/// App-wide watch-history store, exposed through GetX so any widget can read or
-/// update "continue watching" state reactively.
-///
-/// Persistence model:
-///  * One entry per *anime* (not per site). The key is
-///    [WatchHistoryEntry.id] = "$domain::$slug", derived from the anime's URL,
-///    so watching multiple animes on the same provider keeps a separate resume
-///    point for each, and re-opening the same anime updates the existing entry
-///    instead of duplicating it.
-///  * The full list is serialized as a JSON array inside a single
-///    `SharedPreferences` string for an atomic, cheap read/write.
-///  * The in-memory list is kept sorted by [WatchHistoryEntry.lastWatchedAt]
-///    descending so the most recently watched anime is always first.
+/// App-wide controller managing watch history, favorites, theme preference,
+/// and custom providers.
 class HistoryController extends GetxController {
   /// Reactive list of history entries, newest first.
   final RxList<WatchHistoryEntry> entries = <WatchHistoryEntry>[].obs;
 
-  /// True once the initial load from disk has completed. UI can use this to
-  /// avoid a flash of empty state before preferences are read.
+  /// Reactive set of pinned / favorited provider domains.
+  final RxSet<String> favoriteDomains = <String>{}.obs;
+
+  /// Reactive list of user-created custom providers.
+  final RxList<AnimeSiteConfig> customSites = <AnimeSiteConfig>[].obs;
+
+  /// Active application theme mode (persisted to disk).
+  final Rx<ThemeMode> themeMode = ThemeMode.system.obs;
+
+  /// True once the initial load from disk has completed.
   final RxBool isReady = false.obs;
 
   SharedPreferences? _prefs;
-
-  /// Serializes concurrent disk writes into a single linear queue so that a
-  /// slower, older write can never land after a newer one (write-skew that
-  /// would silently revert history). Callers `await` the returned future, so
-  /// they only proceed once their specific modification is safely on disk -
-  /// no early-return that could be killed before the deferred write lands.
   Future<void>? _pendingSaveTask;
 
   @override
   void onInit() {
     super.onInit();
-    _load();
+    loadAll();
   }
 
-  /// Reads the persisted list.
-  ///
-  /// Each stored entry is parsed defensively: a single malformed/corrupt row
-  /// (rare disk failure, schema change, missing field) is discarded on its own
-  /// rather than throwing and wiping the user's entire history.
-  Future<void> _load() async {
+  /// Loads all persisted states (history, theme, favorites, custom providers).
+  Future<void> loadAll() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    await Future.wait([
+      _loadHistory(),
+      _loadTheme(),
+      _loadFavorites(),
+      _loadCustomSitesInternal(),
+    ]);
+    isReady.value = true;
+  }
+
+  // ── Theme Mode Management ──────────────────────────────────────────
+
+  Future<void> _loadTheme() async {
+    try {
+      final raw = _prefs?.getString(_kThemePrefsKey);
+      if (raw == 'light') {
+        themeMode.value = ThemeMode.light;
+      } else if (raw == 'dark') {
+        themeMode.value = ThemeMode.dark;
+      } else {
+        themeMode.value = ThemeMode.system;
+      }
+    } catch (_) {
+      themeMode.value = ThemeMode.system;
+    }
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    themeMode.value = mode;
+    _prefs ??= await SharedPreferences.getInstance();
+    final val = switch (mode) {
+      ThemeMode.light => 'light',
+      ThemeMode.dark => 'dark',
+      ThemeMode.system => 'system',
+    };
+    await _prefs?.setString(_kThemePrefsKey, val);
+  }
+
+  Future<void> cycleThemeMode() async {
+    final next = switch (themeMode.value) {
+      ThemeMode.system => ThemeMode.light,
+      ThemeMode.light => ThemeMode.dark,
+      ThemeMode.dark => ThemeMode.system,
+    };
+    await setThemeMode(next);
+  }
+
+  // ── Favorites Management ───────────────────────────────────────────
+
+  Future<void> _loadFavorites() async {
+    try {
+      final list = _prefs?.getStringList(_kFavoritesPrefsKey) ?? [];
+      favoriteDomains.assignAll(list.map(normalizeDomain));
+    } catch (_) {
+      favoriteDomains.clear();
+    }
+  }
+
+  Future<void> _saveFavorites() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs?.setStringList(_kFavoritesPrefsKey, favoriteDomains.toList());
+  }
+
+  bool isFavorite(String domain) {
+    if (domain.isEmpty) return false;
+    return favoriteDomains.contains(normalizeDomain(domain));
+  }
+
+  Future<void> toggleFavorite(String domain) async {
+    if (domain.isEmpty) return;
+    final norm = normalizeDomain(domain);
+    if (favoriteDomains.contains(norm)) {
+      favoriteDomains.remove(norm);
+    } else {
+      favoriteDomains.add(norm);
+    }
+    await _saveFavorites();
+  }
+
+  // ── Watch History Management ───────────────────────────────────────
+
+  Future<void> _loadHistory() async {
     try {
       _prefs ??= await SharedPreferences.getInstance();
       final raw = _prefs?.getStringList(_kHistoryPrefsKey) ?? [];
@@ -70,30 +144,17 @@ class HistoryController extends GetxController {
         try {
           parsed.add(WatchHistoryEntry.fromJsonString(row));
         } catch (_) {
-          // Skip just this corrupt entry; keep the rest.
+          // Skip corrupt rows defensively
         }
       }
       parsed.sort((a, b) => b.lastWatchedAt.compareTo(a.lastWatchedAt));
       entries.assignAll(parsed);
     } catch (_) {
-      // Only a catastrophic failure (e.g. prefs itself unavailable) clears.
       entries.clear();
-    } finally {
-      isReady.value = true;
     }
   }
 
-  /// Persists the current [entries] to disk. Returns false if persistence is
-  /// unavailable so callers can ignore transient failures.
-  ///
-  /// Writes are fully serialized through an awaitable completer queue: if a
-  /// save is already running, the caller awaits that in-flight task and then
-  /// runs its own save. This guarantees (a) no write-skew from interleaved
-  /// writes, and (b) callers only return once THEIR modification is on disk -
-  /// there is no early `false` return that could be killed by process death
-  /// before the deferred write lands.
   Future<bool> _save() async {
-    // Chain onto any save currently in flight so writes stay strictly ordered.
     if (_pendingSaveTask != null) {
       await _pendingSaveTask;
     }
@@ -114,11 +175,8 @@ class HistoryController extends GetxController {
     }
   }
 
-  /// All history entries, newest first.
   List<WatchHistoryEntry> get all => entries;
 
-  /// All history entries for a given provider [domain] (newest first). Domain
-  /// comparison is normalized (trim + case + leading "www.") so variants group.
   List<WatchHistoryEntry> forDomain(String domain) {
     if (domain.isEmpty) return const [];
     final cleanTarget = normalizeDomain(domain);
@@ -127,21 +185,11 @@ class HistoryController extends GetxController {
         .toList();
   }
 
-  /// Returns the saved entry matching [id], or null.
   WatchHistoryEntry? byId(String id) {
     if (id.isEmpty) return null;
     return entries.where((e) => e.id == id).firstOrNull;
   }
 
-  /// Records (or updates) the resume point for a specific anime.
-  ///
-  /// Calling this repeatedly as the user navigates within the same anime simply
-  /// bumps [lastWatchedAt] and updates [url]/[title]; it never creates
-  /// duplicates. The list is re-sorted and persisted after the write.
-  ///
-  /// Pass [preserveTimestamp] = true (e.g. when undoing a deletion) to keep the
-  /// entry's original [lastWatchedAt] so it returns to its previous position
-  /// instead of jumping to the top of the list.
   Future<void> record(
     WatchHistoryEntry entry, {
     bool preserveTimestamp = false,
@@ -158,18 +206,13 @@ class HistoryController extends GetxController {
       entries[idx] = entry.copyWith(lastWatchedAt: now);
     }
     entries.sort((a, b) => b.lastWatchedAt.compareTo(a.lastWatchedAt));
-    // Cap the list so unbounded growth can't make the SharedPreferences JSON
-    // array grow forever (which would cause disk/UI jank over months of use).
-    // Only the 200 most-recently-watched animes are kept.
     if (entries.length > _kMaxHistoryEntries) {
       entries.removeRange(_kMaxHistoryEntries, entries.length);
     }
-    // Keep the reactive list identity fresh for observers.
     entries.refresh();
     await _save();
   }
 
-  /// Removes a single anime's history by [id].
   Future<void> removeById(String id) async {
     if (id.isEmpty) return;
     entries.removeWhere((e) => e.id == id);
@@ -177,8 +220,6 @@ class HistoryController extends GetxController {
     await _save();
   }
 
-  /// Removes every history entry for a provider [domain]. Domain comparison is
-  /// normalized (trim + case + leading "www.").
   Future<void> clearDomain(String domain) async {
     if (domain.isEmpty) return;
     final cleanTarget = normalizeDomain(domain);
@@ -187,18 +228,18 @@ class HistoryController extends GetxController {
     await _save();
   }
 
-  /// Clears all watch history.
   Future<void> clearAll() async {
     entries.clear();
     await _save();
   }
 
-  // ── Custom site persistence ─────────────────────────────────────────
-  /// Storage key for the user's custom (non-default) site configs.
-  static const String _kCustomSitesPrefsKey = 'animedives.custom_sites.v1';
+  // ── Custom Site & Unified Provider Resolution ───────────────────────
 
-  /// Returns the list of custom site configs persisted from the "Add Site"
-  /// dialog. Returns an empty list if nothing has been saved yet.
+  Future<void> _loadCustomSitesInternal() async {
+    final sites = await loadCustomSites();
+    customSites.assignAll(sites);
+  }
+
   Future<List<AnimeSiteConfig>> loadCustomSites() async {
     _prefs ??= await SharedPreferences.getInstance();
     final raw = _prefs?.getStringList(_kCustomSitesPrefsKey) ?? [];
@@ -207,18 +248,34 @@ class HistoryController extends GetxController {
       try {
         result.add(AnimeSiteConfig.fromJsonString(row));
       } catch (_) {
-        // Skip just this corrupt entry; keep the rest.
+        // Skip corrupt entry
       }
     }
     return result;
   }
 
-  /// Persists [sites] as the user's complete custom-site list (overwrites any
-  /// previously saved entries). Called whenever a custom site is added or
-  /// removed.
   Future<void> saveCustomSites(List<AnimeSiteConfig> sites) async {
     _prefs ??= await SharedPreferences.getInstance();
     final raw = sites.map((e) => e.toJsonString()).toList();
     await _prefs!.setStringList(_kCustomSitesPrefsKey, raw);
+    customSites.assignAll(sites);
+  }
+
+  /// Combines built-in default providers and custom user providers.
+  List<AnimeSiteConfig> get allSites => [...defaultSites, ...customSites];
+
+  /// Resolves any provider (built-in or custom) by matching its domain or root domain.
+  AnimeSiteConfig? findSiteByDomain(String domain) {
+    if (domain.isEmpty) return null;
+    final target = normalizeDomain(domain);
+    for (final site in allSites) {
+      final siteDomain = normalizeDomain(site.domain);
+      if (siteDomain == target ||
+          target.endsWith('.$siteDomain') ||
+          siteDomain.endsWith('.$target')) {
+        return site;
+      }
+    }
+    return null;
   }
 }
