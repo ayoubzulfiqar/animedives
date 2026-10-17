@@ -4,14 +4,14 @@ import 'package:animedives/themes.dart';
 
 void main() {
   testWidgets(
-    'Electric Cyber Glassmorphism theme provides brand tokens and extensions',
+    'Pure Monochrome Minimalist theme provides AMOLED tokens and extensions',
     (tester) async {
-      expect(kBrandCyan, const Color(0xFF00E5FF));
-      expect(kBrandPurple, const Color(0xFFB388FF));
-      expect(kBrandObsidian, const Color(0xFF08080A));
+      expect(kMonochromeBlack, const Color(0xFF000000));
+      expect(kMonochromeWhite, const Color(0xFFFFFFFF));
+      expect(kBrandObsidian, const Color(0xFF000000));
 
       final dark = darkTheme;
-      expect(dark.scaffoldBackgroundColor, const Color(0xFF08080A));
+      expect(dark.scaffoldBackgroundColor, const Color(0xFF000000));
       final ext = dark.extension<AnimedivesColors>();
       expect(ext, isNotNull);
       expect(ext!.cyanAccent, kBrandCyan);
@@ -21,8 +21,8 @@ void main() {
     },
   );
 
-  test('animedivesCyberGradient produces cyan to purple linear gradient', () {
+  test('animedivesCyberGradient produces monochrome linear gradient', () {
     const gradient = animedivesCyberGradient;
-    expect(gradient.colors, [kBrandCyan, kBrandPurple]);
+    expect(gradient.colors, [const Color(0xFFFFFFFF), const Color(0xFFA1A1AA)]);
   });
 }
