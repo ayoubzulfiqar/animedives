@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -87,6 +88,9 @@ class _WebviewScreenState extends State<WebviewScreen>
   bool _isFullscreen = false;
   bool _isTransitioningFullscreen = false;
   int _progress = 0;
+  bool _canGoBack = false;
+  bool _canGoForward = false;
+  bool _isDesktopMode = false;
 
   /// The deepest URL the user has reached on this provider. Persisted to the
   /// watch-history store so the session can be resumed after the app closes.
@@ -448,7 +452,144 @@ class _WebviewScreenState extends State<WebviewScreen>
       _hasError = false;
       _pageLoaded = true;
     });
+    _updateNavState();
   }
+
+  Future<void> _updateNavState() async {
+    try {
+      final back = await _controller.canGoBack();
+      final forward = await _controller.canGoForward();
+      if (mounted) {
+        setState(() {
+          _canGoBack = back;
+          _canGoForward = forward;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleDesktopMode() async {
+    setState(() => _isDesktopMode = !_isDesktopMode);
+    final ua = _isDesktopMode
+        ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        : 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.113 Mobile Safari/537.36';
+    await _controller.setUserAgent(ua);
+    _retry();
+  }
+
+  void _showShieldStatsModal(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final animedives = Theme.of(context).extension<AnimedivesColors>()!;
+    final totalBlocked = widget.site.hideSelectors.length + globalHideSelectors.length;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: const Color(0xF0101016),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(color: const Color(0x3300E5FF)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: animedives.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                const Icon(Icons.shield_rounded, color: kBrandBlue, size: 28),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Shield Active: ${widget.site.name}',
+                        style: TextStyle(
+                          color: scheme.onSurface,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        widget.site.domain,
+                        style: TextStyle(
+                          color: animedives.mutedForeground,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: animedives.border),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.block_rounded, color: Color(0xFFFF3366), size: 18),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Clutter & Pop-up Selectors',
+                        style: TextStyle(color: scheme.onSurface, fontSize: 14),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '$totalBlocked rules',
+                        style: const TextStyle(
+                          color: kBrandBlue,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 20),
+                  Row(
+                    children: [
+                      const Icon(Icons.verified_user_rounded, color: kBrandBlue, size: 18),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Allowed Video Hosts',
+                        style: TextStyle(color: scheme.onSurface, fontSize: 14),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${widget.site.safeCdnDomains.length + globalSafeCdnDomains.length} CDNs',
+                        style: const TextStyle(
+                          color: kBrandBlue,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   /// Per-site + global clutter selectors combined with the sandbox-hardening
   /// rules, returned as a single stylesheet string.
@@ -709,14 +850,112 @@ class _WebviewScreenState extends State<WebviewScreen>
       ),
       _loadingOverlay(),
       if (_hasError) _errorOverlay(),
+      if (!_isFullscreen)
+        Positioned(
+          left: 16,
+          right: 16,
+          bottom: 16,
+          child: _floatingControlBar(),
+        ),
     ],
   );
+
+  Widget _floatingControlBar() {
+    return Center(
+      child: ClipRRect(
+        key: const ValueKey('webview_floating_controls'),
+        borderRadius: BorderRadius.circular(30),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xD90D0D14),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: const Color(0x4000E5FF), width: 1.2),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x66000000),
+                  blurRadius: 16,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Go back',
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                  color: _canGoBack ? Colors.white : Colors.white38,
+                  onPressed: _canGoBack
+                      ? () async {
+                          await _controller.goBack();
+                          _updateNavState();
+                        }
+                      : null,
+                ),
+                IconButton(
+                  tooltip: 'Go forward',
+                  icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
+                  color: _canGoForward ? Colors.white : Colors.white38,
+                  onPressed: _canGoForward
+                      ? () async {
+                          await _controller.goForward();
+                          _updateNavState();
+                        }
+                      : null,
+                ),
+                IconButton(
+                  tooltip: 'Reload',
+                  icon: const Icon(Icons.refresh_rounded, size: 20),
+                  color: Colors.white,
+                  onPressed: _retry,
+                ),
+                IconButton(
+                  tooltip: _isDesktopMode ? 'Mobile view' : 'Desktop view',
+                  icon: Icon(
+                    _isDesktopMode
+                        ? Icons.desktop_windows_rounded
+                        : Icons.phone_android_rounded,
+                    size: 20,
+                  ),
+                  color: _isDesktopMode ? kBrandBlue : Colors.white,
+                  onPressed: _toggleDesktopMode,
+                ),
+                IconButton(
+                  tooltip: 'Shield status',
+                  icon: const Icon(Icons.shield_outlined, size: 20),
+                  color: kBrandBlue,
+                  onPressed: () => _showShieldStatsModal(context),
+                ),
+                Container(
+                  width: 1,
+                  height: 20,
+                  color: Colors.white24,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                ),
+                IconButton(
+                  tooltip: 'Close',
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                  color: Colors.white70,
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
 
   /// Custom overlay spinner that fades out only when the page is fully loaded
   /// AND the cleaner CSS has been injected.
   Widget _loadingOverlay() {
     final scheme = Theme.of(context).colorScheme;
-    final animedives = Theme.of(context).extension<AnimedivesColors>()!;
+    final animedives = Theme.of(context).extension<AnimedivesColors>();
+    final mutedColor = animedives?.mutedForeground ?? scheme.onSurfaceVariant;
     return AnimatedOpacity(
       opacity: _isLoading ? 1.0 : 0.0,
       duration: const Duration(milliseconds: 400),
@@ -733,7 +972,7 @@ class _WebviewScreenState extends State<WebviewScreen>
               Text(
                 'Loading ${widget.site.name}...',
                 style: TextStyle(
-                  color: animedives.mutedForeground,
+                  color: mutedColor,
                   fontSize: 14,
                 ),
               ),
@@ -759,7 +998,8 @@ class _WebviewScreenState extends State<WebviewScreen>
   /// a disconnect).
   Widget _errorOverlay() {
     final scheme = Theme.of(context).colorScheme;
-    final animedives = Theme.of(context).extension<AnimedivesColors>()!;
+    final animedives = Theme.of(context).extension<AnimedivesColors>();
+    final mutedColor = animedives?.mutedForeground ?? scheme.onSurfaceVariant;
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Center(
@@ -784,7 +1024,7 @@ class _WebviewScreenState extends State<WebviewScreen>
                 'and try again.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: animedives.mutedForeground,
+                  color: mutedColor,
                   fontSize: 14,
                   height: 1.5,
                 ),
