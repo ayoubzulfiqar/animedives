@@ -48,6 +48,25 @@ class AnimeSiteConfig {
     return uri?.host ?? '';
   }
 
+  /// Returns a reliable image URL for this provider's icon.
+  /// If [logoUrl] is specified and is a standard web image (not a legacy .ico),
+  /// [logoUrl] is used directly. If [logoUrl] is empty or is a Windows .ico
+  /// format that native codecs cannot decode reliably, it resolves a crisp 128px
+  /// PNG icon via Google's Favicon service.
+  String get effectiveFaviconUrl {
+    final trimmed = logoUrl.trim();
+    final lower = trimmed.toLowerCase();
+    if (trimmed.isNotEmpty &&
+        !lower.endsWith('.ico') &&
+        !lower.contains('.ico?')) {
+      return trimmed;
+    }
+    final targetDomain = domain.isNotEmpty
+        ? domain
+        : domainFromUrl(homepageUrl);
+    return 'https://www.google.com/s2/favicons?domain=$targetDomain&sz=128';
+  }
+
   /// Builds the full stylesheet that hides every [hideSelectors] entry.
   /// Returns an empty string when there is nothing to hide.
   String get injectedCss {
