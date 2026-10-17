@@ -111,7 +111,7 @@ class AnimedivesColors extends ThemeExtension<AnimedivesColors> {
   }
 }
 
-const AnimedivesColors _lightAnimedives = AnimedivesColors(
+const AnimedivesColors lightAnimedivesColors = AnimedivesColors(
   mutedForeground: Color(0xFF6B7280),
   border: Color(0xFFE5E7EB),
   input: Color(0xFFF3F4F6),
@@ -125,7 +125,7 @@ const AnimedivesColors _lightAnimedives = AnimedivesColors(
   cardBorder: Color(0xFFE5E7EB),
 );
 
-const AnimedivesColors _darkAnimedives = AnimedivesColors(
+const AnimedivesColors darkAnimedivesColors = AnimedivesColors(
   mutedForeground: Color(0xFF9CA3AF),
   border: Color(0xFF22222E),
   input: Color(0xFF14141B),
@@ -138,6 +138,10 @@ const AnimedivesColors _darkAnimedives = AnimedivesColors(
   cardSurface: Color(0xDD121218),
   cardBorder: Color(0x3300E5FF),
 );
+
+const AnimedivesColors _lightAnimedives = lightAnimedivesColors;
+const AnimedivesColors _darkAnimedives = darkAnimedivesColors;
+
 
 /// Applies Bricolage Grotesque typography with crisp modern metrics.
 TextTheme _bricolage(TextTheme base) =>

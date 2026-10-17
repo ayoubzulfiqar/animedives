@@ -13,23 +13,6 @@ ColorScheme _scheme(BuildContext c) => Theme.of(c).colorScheme;
 AnimedivesColors _animedives(BuildContext c) =>
     Theme.of(c).extension<AnimedivesColors>()!;
 
-/// Human-friendly "last watched" label, e.g. "just now", "2h ago".
-///
-/// Defensive against corrupted clocks: a zero/negative [ts] (uninitialized)
-/// or a future timestamp (system clock ahead) is clamped to "just now" rather
-/// than producing a negative or absurd value. Intervals are truncated (floor)
-/// so an episode watched 1h35m ago shows "1h ago" until a full second hour
-/// elapses, which matches natural human expectation.
-String _relativeTime(int ts) {
-  if (ts <= 0) return 'just now';
-  final diff = DateTime.now().millisecondsSinceEpoch - ts;
-  if (diff <= 0) return 'just now';
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return '${(diff / 60000).floor()}m ago';
-  if (diff < 86400000) return '${(diff / 3600000).floor()}h ago';
-  if (diff < 604800000) return '${(diff / 86400000).floor()}d ago';
-  return '${(diff / 604800000).floor()}w ago';
-}
 
 /// Safely extracts the first user-perceived character (grapheme cluster) of
 /// [text] for the avatar initial, handling emoji flags, combining diacritics
@@ -46,27 +29,17 @@ class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
 
   /// Resolves the [AnimeSiteConfig] for a history entry so we can reopen the
-  /// WebView with the correct shield config. Matching is normalized (trim + case
-  /// + leading "www.") against [defaultSites] using the controller's single
-  /// source of truth; if the provider is no longer present we synthesize a
-  /// minimal config from the entry itself.
+  /// WebView with the correct shield config.
   AnimeSiteConfig _siteFor(WatchHistoryEntry entry) {
-    final target = normalizeDomain(entry.domain);
-    final match = defaultSites.where(
-      (s) => normalizeDomain(s.domain) == target,
-    );
-    if (match.isNotEmpty) return match.first;
-    // Build a safe fallback homepage URL: if the stored domain already carries
-    // a scheme (e.g. "http://192.168.1.50:8080") use it as-is, otherwise prefix
-    // https://. This avoids producing a broken "https://http://..." address.
-    final fallbackUrl = Uri.tryParse(entry.domain)?.hasScheme == true
-        ? entry.domain
-        : 'https://${entry.domain}';
-    return AnimeSiteConfig.auto(
-      name: entry.providerName,
-      homepageUrl: fallbackUrl,
-    );
+    return Get.find<HistoryController>().findSiteByDomain(entry.domain) ??
+        AnimeSiteConfig.auto(
+          name: entry.providerName,
+          homepageUrl: Uri.tryParse(entry.domain)?.hasScheme == true
+              ? entry.domain
+              : 'https://${entry.domain}',
+        );
   }
+
 
   Future<void> _resume(BuildContext context, WatchHistoryEntry entry) async {
     final site = _siteFor(entry);
@@ -151,12 +124,10 @@ class HistoryScreen extends StatelessWidget {
     // Snapshot the entry so Undo can re-insert the exact same record.
     final removed = entry;
 
-    // Show the snackbar immediately for snappy feedback. The actual removal is
-    // deferred one frame (Duration.zero) so Flutter finishes tearing down the
-    // Dismissible's slide-out animation and frees its list slot BEFORE the
-    // Obx-driven SliverList rebuilds with a smaller childCount. Mutating the
-    // reactive list synchronously inside onDismissed would yank the item out
-    // mid-animation and throw "A Dismissible widget still resides in the tree".
+    // Synchronously remove the item from reactive state so Dismissible
+    // unmounting matches the list length immediately.
+    history.removeById(removed.id);
+
     if (context.mounted) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -178,10 +149,6 @@ class HistoryScreen extends StatelessWidget {
           ),
         );
     }
-
-    // Deferred removal (see note above). The disk write inside removeById runs
-    // concurrently in the background thereafter.
-    Future.delayed(Duration.zero, () => history.removeById(removed.id));
   }
 
   @override
@@ -387,7 +354,7 @@ class _HistoryRow extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${entry.providerName} · ${_relativeTime(entry.lastWatchedAt)}',
+                        '${entry.providerName} · ${relativeTime(entry.lastWatchedAt)}',
                         style: TextStyle(
                           color: animedives.mutedForeground,
                           fontSize: 12,

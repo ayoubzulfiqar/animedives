@@ -162,3 +162,19 @@ String humanizeSlug(String slug) {
       .map((w) => w[0].toUpperCase() + w.substring(1))
       .join(' ');
 }
+
+/// Human-friendly "last watched" label, e.g. "just now", "2h ago".
+///
+/// Defensive against corrupted clocks: non-positive or future timestamps are
+/// clamped to "just now".
+String relativeTime(int ts) {
+  if (ts <= 0) return 'just now';
+  final diff = DateTime.now().millisecondsSinceEpoch - ts;
+  if (diff <= 0) return 'just now';
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return '${(diff / 60000).floor()}m ago';
+  if (diff < 86400000) return '${(diff / 3600000).floor()}h ago';
+  if (diff < 604800000) return '${(diff / 86400000).floor()}d ago';
+  return '${(diff / 604800000).floor()}w ago';
+}
+

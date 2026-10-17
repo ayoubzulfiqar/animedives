@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../controllers/history_controller.dart';
 import '../models/site_config.dart';
+import '../models/watch_history.dart';
 import '../provider.dart';
 import '../themes.dart';
 import 'history_screen.dart';
@@ -11,7 +12,10 @@ import 'webview_screen.dart';
 /// Convenience accessors for the theme tokens defined in [themes.dart].
 ColorScheme _scheme(BuildContext c) => Theme.of(c).colorScheme;
 AnimedivesColors _animedives(BuildContext c) =>
-    Theme.of(c).extension<AnimedivesColors>()!;
+    Theme.of(c).extension<AnimedivesColors>() ??
+    (Theme.of(c).brightness == Brightness.dark
+        ? darkAnimedivesColors
+        : lightAnimedivesColors);
 
 /// The application's landing screen.
 class HomeScreen extends StatefulWidget {
@@ -90,6 +94,82 @@ class _HomeScreenState extends State<HomeScreen> {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => WebviewScreen(site: site)),
     );
+  }
+
+  Future<void> _resumeHistory(WatchHistoryEntry entry) async {
+    final site = Get.find<HistoryController>().findSiteByDomain(entry.domain) ??
+        AnimeSiteConfig.auto(
+          name: entry.providerName,
+          homepageUrl: Uri.tryParse(entry.domain)?.hasScheme == true
+              ? entry.domain
+              : 'https://${entry.domain}',
+        );
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WebviewScreen(site: site, initialUrl: entry.url),
+      ),
+    );
+  }
+
+  Future<void> _confirmRemoveCustomSite(AnimeSiteConfig site) async {
+    final scheme = _scheme(context);
+    final animedives = _animedives(context);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: scheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(
+          'Remove "${site.name}"?',
+          style: TextStyle(
+            color: scheme.onSurface,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to remove this custom provider from your list?',
+          style: TextStyle(color: animedives.mutedForeground),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: animedives.mutedForeground),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: animedives.destructive,
+              foregroundColor: scheme.onError,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      setState(() => _sites.remove(site));
+      final custom = _sites.where((s) => !defaultSites.contains(s)).toList();
+      Get.find<HistoryController>().saveCustomSites(custom);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: scheme.inverseSurface,
+            content: Text(
+              'Removed custom site "${site.name}"',
+              style: TextStyle(color: scheme.inversePrimary),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   /// Opens a form dialog to append a provider configuration safely.
@@ -226,6 +306,7 @@ class _HomeScreenState extends State<HomeScreen> {
             slivers: [
               _appBar(),
               _welcomeBanner(),
+              _continueWatchingRail(),
               _searchBar(),
               _filterBar(),
               const SliverToBoxAdapter(
@@ -249,6 +330,7 @@ class _HomeScreenState extends State<HomeScreen> {
           slivers: [
             _appBar(),
             _welcomeBanner(),
+            _continueWatchingRail(),
             _searchBar(),
             _filterBar(),
             _grid(),
@@ -256,6 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+
   }
 
   Widget _appBar() => SliverPadding(
@@ -406,6 +489,96 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   );
 
+  Widget _continueWatchingRail() {
+    final history = Get.find<HistoryController>();
+    return Obx(() {
+      final entries = history.entries;
+      if (entries.isEmpty) {
+        return const SliverToBoxAdapter(child: SizedBox.shrink());
+      }
+      return SliverPadding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+        sliver: SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  ShaderMask(
+                    shaderCallback: (bounds) =>
+                        animedivesCyberGradient.createShader(bounds),
+                    child: const Icon(
+                      Icons.play_circle_filled_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'CONTINUE WATCHING',
+                    style: TextStyle(
+                      color: _scheme(context).onSurface,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'See all (${entries.length})',
+                          style: TextStyle(
+                            color: _animedives(context).cyanAccent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 16,
+                          color: _animedives(context).cyanAccent,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 96,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: entries.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (ctx, i) {
+                    final entry = entries[i];
+                    return _ContinueWatchingCard(
+                      entry: entry,
+                      onTap: () => _resumeHistory(entry),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
   /// Category filter chips (All / Anime / Hentai) rendered above the search bar.
   Widget _filterBar() => SliverPadding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
@@ -513,12 +686,7 @@ class _HomeScreenState extends State<HomeScreen> {
               site: site,
               onTap: () => _openSite(site),
               onRemove: isCustom
-                  ? () {
-                      setState(() => _sites.remove(site));
-                      final custom =
-                          _sites.where((s) => !defaultSites.contains(s)).toList();
-                      Get.find<HistoryController>().saveCustomSites(custom);
-                    }
+                  ? () => _confirmRemoveCustomSite(site)
                   : null,
             );
           }, childCount: sites.length),
@@ -699,3 +867,114 @@ class _GradientBorder extends StatelessWidget {
     );
   }
 }
+
+class _ContinueWatchingCard extends StatefulWidget {
+  final WatchHistoryEntry entry;
+  final VoidCallback onTap;
+
+  const _ContinueWatchingCard({
+    required this.entry,
+    required this.onTap,
+  });
+
+  @override
+  State<_ContinueWatchingCard> createState() => _ContinueWatchingCardState();
+}
+
+class _ContinueWatchingCardState extends State<_ContinueWatchingCard> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = _scheme(context);
+    final animedives = _animedives(context);
+    final initial = widget.entry.title.isNotEmpty
+        ? widget.entry.title.characters.first.toUpperCase()
+        : '?';
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeInOut,
+        child: Container(
+          width: 250,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: animedives.cardSurface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: animedives.cardBorder, width: 1.0),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: animedivesBorderGradient(context),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  initial,
+                  style: TextStyle(
+                    color: scheme.surface,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      widget.entry.title,
+                      style: TextStyle(
+                        color: scheme.onSurface,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${widget.entry.providerName} · ${relativeTime(widget.entry.lastWatchedAt)}',
+                      style: TextStyle(
+                        color: animedives.mutedForeground,
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: animedives.cyanAccent.withValues(alpha: 0.12),
+                ),
+                child: Icon(
+                  Icons.play_arrow_rounded,
+                  color: animedives.cyanAccent,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
