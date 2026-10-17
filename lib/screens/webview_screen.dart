@@ -479,9 +479,9 @@ class _WebviewScreenState extends State<WebviewScreen>
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         decoration: BoxDecoration(
-          color: const Color(0xF0101016),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          border: Border.all(color: const Color(0x3300E5FF)),
+          color: scheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          border: Border.all(color: animedives.border, width: 1.0),
         ),
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         child: Column(
@@ -501,7 +501,7 @@ class _WebviewScreenState extends State<WebviewScreen>
             const SizedBox(height: 18),
             Row(
               children: [
-                const Icon(Icons.shield_rounded, color: kBrandBlue, size: 28),
+                Icon(Icons.shield_rounded, color: scheme.onSurface, size: 28),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -533,15 +533,15 @@ class _WebviewScreenState extends State<WebviewScreen>
               decoration: BoxDecoration(
                 color: scheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: animedives.border),
+                border: Border.all(color: animedives.border, width: 1.0),
               ),
               child: Column(
                 children: [
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.block_rounded,
-                        color: Color(0xFFFF3366),
+                        color: animedives.destructive,
                         size: 18,
                       ),
                       const SizedBox(width: 10),
@@ -552,8 +552,8 @@ class _WebviewScreenState extends State<WebviewScreen>
                       const Spacer(),
                       Text(
                         '$totalBlocked rules',
-                        style: const TextStyle(
-                          color: kBrandBlue,
+                        style: TextStyle(
+                          color: scheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -562,9 +562,9 @@ class _WebviewScreenState extends State<WebviewScreen>
                   const Divider(height: 20),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.verified_user_rounded,
-                        color: kBrandBlue,
+                        color: scheme.onSurface,
                         size: 18,
                       ),
                       const SizedBox(width: 10),
@@ -575,8 +575,8 @@ class _WebviewScreenState extends State<WebviewScreen>
                       const Spacer(),
                       Text(
                         '${widget.site.safeCdnDomains.length + globalSafeCdnDomains.length} CDNs',
-                        style: const TextStyle(
-                          color: kBrandBlue,
+                        style: TextStyle(
+                          color: scheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -858,6 +858,22 @@ class _WebviewScreenState extends State<WebviewScreen>
   );
 
   Widget _floatingControlBar() {
+    final scheme = Theme.of(context).colorScheme;
+    final animedives =
+        Theme.of(context).extension<AnimedivesColors>() ??
+        (Theme.of(context).brightness == Brightness.dark
+            ? darkAnimedivesColors
+            : lightAnimedivesColors);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final barBg = isDark ? const Color(0xE6101014) : const Color(0xF2FFFFFF);
+    final borderColor = animedives.border;
+    final primaryIconColor = scheme.onSurface;
+    final disabledIconColor = isDark
+        ? const Color(0xFF555555)
+        : const Color(0xFFBBBBBB);
+    final secondaryIconColor = animedives.mutedForeground;
+    final dividerColor = animedives.border;
+
     if (_controlsCollapsed) {
       return Align(
         alignment: Alignment.bottomRight,
@@ -868,21 +884,14 @@ class _WebviewScreenState extends State<WebviewScreen>
             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xD90D0D14),
+                color: barBg,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0x4000E5FF), width: 1.2),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x66000000),
-                    blurRadius: 12,
-                    offset: Offset(0, 4),
-                  ),
-                ],
+                border: Border.all(color: borderColor, width: 1.0),
               ),
               child: IconButton(
                 tooltip: 'Show navigation controls',
                 icon: const Icon(Icons.unfold_more_rounded, size: 20),
-                color: kBrandBlue,
+                color: primaryIconColor,
                 onPressed: () => setState(() => _controlsCollapsed = false),
               ),
             ),
@@ -899,16 +908,9 @@ class _WebviewScreenState extends State<WebviewScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xD90D0D14),
+              color: barBg,
               borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: const Color(0x4000E5FF), width: 1.2),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x66000000),
-                  blurRadius: 16,
-                  offset: Offset(0, 4),
-                ),
-              ],
+              border: Border.all(color: borderColor, width: 1.0),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -916,7 +918,7 @@ class _WebviewScreenState extends State<WebviewScreen>
                 IconButton(
                   tooltip: 'Go back',
                   icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                  color: _canGoBack ? Colors.white : Colors.white38,
+                  color: _canGoBack ? primaryIconColor : disabledIconColor,
                   onPressed: _canGoBack
                       ? () async {
                           await _controller.goBack();
@@ -927,7 +929,7 @@ class _WebviewScreenState extends State<WebviewScreen>
                 IconButton(
                   tooltip: 'Go forward',
                   icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
-                  color: _canGoForward ? Colors.white : Colors.white38,
+                  color: _canGoForward ? primaryIconColor : disabledIconColor,
                   onPressed: _canGoForward
                       ? () async {
                           await _controller.goForward();
@@ -938,7 +940,7 @@ class _WebviewScreenState extends State<WebviewScreen>
                 IconButton(
                   tooltip: 'Reload',
                   icon: const Icon(Icons.refresh_rounded, size: 20),
-                  color: Colors.white,
+                  color: primaryIconColor,
                   onPressed: _retry,
                 ),
                 IconButton(
@@ -949,31 +951,31 @@ class _WebviewScreenState extends State<WebviewScreen>
                         : Icons.phone_android_rounded,
                     size: 20,
                   ),
-                  color: _isDesktopMode ? kBrandBlue : Colors.white,
+                  color: _isDesktopMode ? primaryIconColor : secondaryIconColor,
                   onPressed: _toggleDesktopMode,
                 ),
                 IconButton(
                   tooltip: 'Shield status',
                   icon: const Icon(Icons.shield_outlined, size: 20),
-                  color: kBrandBlue,
+                  color: primaryIconColor,
                   onPressed: () => _showShieldStatsModal(context),
                 ),
                 IconButton(
                   tooltip: 'Hide controls',
                   icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
-                  color: Colors.white70,
+                  color: secondaryIconColor,
                   onPressed: () => setState(() => _controlsCollapsed = true),
                 ),
                 Container(
                   width: 1,
                   height: 20,
-                  color: Colors.white24,
+                  color: dividerColor,
                   margin: const EdgeInsets.symmetric(horizontal: 4),
                 ),
                 IconButton(
                   tooltip: 'Close',
                   icon: const Icon(Icons.close_rounded, size: 20),
-                  color: Colors.white70,
+                  color: secondaryIconColor,
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
@@ -1001,7 +1003,10 @@ class _WebviewScreenState extends State<WebviewScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: kBrandBlue, strokeWidth: 3),
+              CircularProgressIndicator(
+                color: scheme.onSurface,
+                strokeWidth: 3,
+              ),
               const SizedBox(height: 18),
               Text(
                 'Loading ${widget.site.name}...',
@@ -1012,7 +1017,7 @@ class _WebviewScreenState extends State<WebviewScreen>
                 width: 160,
                 child: LinearProgressIndicator(
                   value: _progress == 0 ? null : _progress / 100,
-                  color: kBrandAmber,
+                  color: scheme.onSurface,
                   backgroundColor: scheme.surfaceContainerHighest,
                 ),
               ),
@@ -1039,7 +1044,7 @@ class _WebviewScreenState extends State<WebviewScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.wifi_off_rounded, color: kBrandAmber, size: 56),
+              Icon(Icons.wifi_off_rounded, color: scheme.onSurface, size: 56),
               const SizedBox(height: 18),
               Text(
                 'Connection failed',
@@ -1062,12 +1067,13 @@ class _WebviewScreenState extends State<WebviewScreen>
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: kBrandAmber,
-                  foregroundColor: Colors.black,
+                  backgroundColor: scheme.onSurface,
+                  foregroundColor: scheme.surface,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 28,
                     vertical: 14,
                   ),
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),

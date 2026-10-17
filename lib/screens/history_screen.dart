@@ -314,8 +314,8 @@ class _HistoryRow extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: scheme.surface,
-              border: Border.all(color: animedives.border),
+              color: animedives.cardSurface,
+              border: Border.all(color: animedives.cardBorder, width: 1.0),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
@@ -324,14 +324,15 @@ class _HistoryRow extends StatelessWidget {
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    gradient: animedivesBorderGradient(context),
+                    color: scheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: animedives.border, width: 1.0),
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     initial,
                     style: TextStyle(
-                      color: scheme.surface,
+                      color: scheme.onSurface,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
