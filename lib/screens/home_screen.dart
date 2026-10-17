@@ -32,14 +32,14 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+enum ProviderCategory { all, favorites, anime, mature }
+
 class _HomeScreenState extends State<HomeScreen> {
   final List<AnimeSiteConfig> _sites = [];
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
   bool _isInitialized = false;
-  // Three-state category filter: null = All (anime + hentai), false = Anime only,
-  // true = Hentai only. Replaces the previous single _showMature boolean.
-  bool? _showMature;
+  ProviderCategory _filter = ProviderCategory.all;
 
   @override
   void initState() {
@@ -78,23 +78,21 @@ class _HomeScreenState extends State<HomeScreen> {
   List<AnimeSiteConfig> get _filteredSites {
     final q = _query.trim().toLowerCase();
     final history = Get.find<HistoryController>();
-    final list = _sites
-        .where(
-          (s) =>
-              (_showMature == null || s.mature == _showMature!) &&
-              (q.isEmpty ||
-                  s.name.toLowerCase().contains(q) ||
-                  s.domain.toLowerCase().contains(q)),
-        )
-        .toList();
-
-    list.sort((a, b) {
-      final aFav = history.isFavorite(a.domain) ? 1 : 0;
-      final bFav = history.isFavorite(b.domain) ? 1 : 0;
-      if (aFav != bFav) return bFav.compareTo(aFav);
-      return 0;
-    });
-    return list;
+    return _sites.where((s) {
+      if (_filter == ProviderCategory.favorites &&
+          !history.isFavorite(s.domain)) {
+        return false;
+      }
+      if (_filter == ProviderCategory.anime && s.mature) {
+        return false;
+      }
+      if (_filter == ProviderCategory.mature && !s.mature) {
+        return false;
+      }
+      return q.isEmpty ||
+          s.name.toLowerCase().contains(q) ||
+          s.domain.toLowerCase().contains(q);
+    }).toList();
   }
 
   Future<void> _openSite(AnimeSiteConfig site) async {
@@ -462,37 +460,38 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _welcomeBanner() => SliverPadding(
     padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
     sliver: SliverToBoxAdapter(
-      child: _GradientBorder(
-        radius: 10,
-        child: Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: _scheme(context).surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(5),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: _animedives(context).cardSurface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _animedives(context).cardBorder,
+            width: 1.0,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Ad-Shielded Streaming',
-                style: TextStyle(
-                  color: _scheme(context).onSurface,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Ad-Shielded Streaming',
+              style: TextStyle(
+                color: _scheme(context).onSurface,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'A secure, full-screen WebView wrapper. Redirect ads are '
-                'blocked, clutter is hidden and video goes native landscape.',
-                style: TextStyle(
-                  color: _animedives(context).mutedForeground,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'A secure, full-screen WebView wrapper. Redirect ads are '
+              'blocked, clutter is hidden and video goes native landscape.',
+              style: TextStyle(
+                color: _animedives(context).mutedForeground,
+                fontSize: 13,
+                height: 1.5,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     ),
@@ -513,14 +512,10 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Row(
                 children: [
-                  ShaderMask(
-                    shaderCallback: (bounds) =>
-                        animedivesCyberGradient.createShader(bounds),
-                    child: const Icon(
-                      Icons.play_circle_filled_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+                  Icon(
+                    Icons.play_circle_filled_rounded,
+                    color: _scheme(context).onSurface,
+                    size: 20,
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -548,7 +543,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text(
                           'See all (${entries.length})',
                           style: TextStyle(
-                            color: _animedives(context).cyanAccent,
+                            color: _scheme(context).onSurface,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -557,7 +552,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Icon(
                           Icons.chevron_right_rounded,
                           size: 16,
-                          color: _animedives(context).cyanAccent,
+                          color: _scheme(context).onSurface,
                         ),
                       ],
                     ),
@@ -589,66 +584,107 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// Category filter chips (All / Anime / Hentai) rendered above the search bar.
-  Widget _filterBar() => SliverPadding(
-    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-    sliver: SliverToBoxAdapter(
-      child: Row(
-        children: [
-          _categoryChip('All', _showMature == null, () {
-            setState(() => _showMature = null);
-          }, isMature: false),
-          const SizedBox(width: 12),
-          _categoryChip('Anime', _showMature == false, () {
-            setState(() => _showMature = false);
-          }, isMature: false),
-          const SizedBox(width: 12),
-          _categoryChip('Hentai', _showMature == true, () {
-            setState(() => _showMature = true);
-          }, isMature: true),
-          const Spacer(),
-          if (_showMature == true)
-            Icon(
-              Icons.warning_amber_rounded,
-              color: _animedives(context).mutedForeground,
-              size: 16,
-            ),
-        ],
+  /// Category filter chips (All / Favorites / Anime / Hentai) rendered above the search bar.
+  Widget _filterBar() {
+    final history = Get.find<HistoryController>();
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      sliver: SliverToBoxAdapter(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: [
+              _categoryChip('All', _filter == ProviderCategory.all, () {
+                setState(() => _filter = ProviderCategory.all);
+              }),
+              const SizedBox(width: 8),
+              Obx(() {
+                final favCount = history.favoriteDomains.length;
+                return _categoryChip(
+                  favCount > 0 ? 'Favorites ($favCount)' : 'Favorites',
+                  _filter == ProviderCategory.favorites,
+                  () {
+                    setState(() => _filter = ProviderCategory.favorites);
+                  },
+                  icon: Icons.star_rounded,
+                );
+              }),
+              const SizedBox(width: 8),
+              _categoryChip('Anime', _filter == ProviderCategory.anime, () {
+                setState(() => _filter = ProviderCategory.anime);
+              }),
+              const SizedBox(width: 8),
+              _categoryChip(
+                '18+ / Hentai',
+                _filter == ProviderCategory.mature,
+                () {
+                  setState(() => _filter = ProviderCategory.mature);
+                },
+                isMature: true,
+              ),
+            ],
+          ),
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   Widget _categoryChip(
     String label,
     bool selected,
     VoidCallback onTap, {
-    required bool isMature,
+    bool isMature = false,
+    IconData? icon,
   }) {
-    final Color color = selected
-        ? (isMature
-              ? _animedives(context).destructive
-              : _scheme(context).primary)
-        : _animedives(context).border;
+    final scheme = _scheme(context);
+    final animedives = _animedives(context);
+
+    final Color bgColor;
+    final Color textColor;
+    final Color borderColor;
+
+    if (selected) {
+      if (isMature) {
+        bgColor = animedives.destructive;
+        textColor = Colors.white;
+        borderColor = animedives.destructive;
+      } else {
+        bgColor = scheme.onSurface;
+        textColor = scheme.surface;
+        borderColor = scheme.onSurface;
+      }
+    } else {
+      bgColor = scheme.surfaceContainerHighest;
+      textColor = animedives.mutedForeground;
+      borderColor = animedives.border;
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected
-              ? (isMature
-                    ? _animedives(context).destructive.withValues(alpha: 0.15)
-                    : _scheme(context).primary.withValues(alpha: 0.15))
-              : _scheme(context).surfaceContainerHighest,
-          border: Border.all(color: color, width: selected ? 2 : 1),
+          color: bgColor,
+          border: Border.all(color: borderColor, width: 1.0),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 13,
-            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 15, color: textColor),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -734,6 +770,8 @@ class _HomeScreenState extends State<HomeScreen> {
     padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
     sliver: SliverLayoutBuilder(
       builder: (context, constraints) {
+        final scheme = _scheme(context);
+        final animedives = _animedives(context);
         final width = constraints.crossAxisExtent;
         final int cross;
         if (width > 1200) {
@@ -749,6 +787,51 @@ class _HomeScreenState extends State<HomeScreen> {
           // React to favorite state changes
           final _ = Get.find<HistoryController>().favoriteDomains.length;
           final sites = _filteredSites;
+          if (sites.isEmpty) {
+            return SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 48,
+                  horizontal: 24,
+                ),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        _filter == ProviderCategory.favorites
+                            ? Icons.star_border_rounded
+                            : Icons.search_off_rounded,
+                        size: 48,
+                        color: animedives.mutedForeground,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _filter == ProviderCategory.favorites
+                            ? 'No favorite providers yet'
+                            : 'No providers found',
+                        style: TextStyle(
+                          color: scheme.onSurface,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _filter == ProviderCategory.favorites
+                            ? 'Tap the star icon on any card to pin your favorite sites here.'
+                            : 'Try adjusting your search query or category filter.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: animedives.mutedForeground,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
           return SliverGrid(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: cross,
@@ -819,13 +902,6 @@ class _ProviderCardState extends State<ProviderCard> {
             color: animedives.cardSurface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: animedives.cardBorder, width: 1.0),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -850,7 +926,7 @@ class _ProviderCardState extends State<ProviderCard> {
                       icon: Icon(
                         isFav ? Icons.star_rounded : Icons.star_border_rounded,
                         color: isFav
-                            ? animedives.cyanAccent
+                            ? scheme.onSurface
                             : animedives.mutedForeground,
                       ),
                       onPressed: () {
@@ -940,11 +1016,11 @@ class _ProviderCardState extends State<ProviderCard> {
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: animedives.cyanAccent.withValues(alpha: 0.12),
+                      color: scheme.surfaceContainerHighest,
                     ),
                     child: Icon(
                       Icons.play_arrow_rounded,
-                      color: animedives.cyanAccent,
+                      color: scheme.onSurface,
                       size: 18,
                     ),
                   ),
@@ -958,34 +1034,35 @@ class _ProviderCardState extends State<ProviderCard> {
   }
 
   Widget _logo(String initial) {
-    if (widget.site.logoUrl.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(10),
+    final url = widget.site.effectiveFaviconUrl;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 44,
+        height: 44,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: _scheme(context).surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _animedives(context).border, width: 1.0),
+        ),
         child: Image.network(
-          widget.site.logoUrl,
-          width: 44,
-          height: 44,
-          fit: BoxFit.cover,
+          url,
+          width: 36,
+          height: 36,
+          fit: BoxFit.contain,
           errorBuilder: (_, _, _) => _gradientLogo(initial),
         ),
-      );
-    }
-    return _gradientLogo(initial);
+      ),
+    );
   }
 
-  Widget _gradientLogo(String initial) => Container(
-    width: 44,
-    height: 44,
-    decoration: BoxDecoration(
-      gradient: animedivesBorderGradient(context),
-      borderRadius: BorderRadius.circular(10),
-    ),
-    alignment: Alignment.center,
+  Widget _gradientLogo(String initial) => Center(
     child: Text(
       initial,
       style: TextStyle(
-        color: _scheme(context).surface,
-        fontSize: 20,
+        color: _scheme(context).onSurface,
+        fontSize: 18,
         fontWeight: FontWeight.bold,
       ),
     ),
@@ -1005,28 +1082,6 @@ class _ProviderCardState extends State<ProviderCard> {
       ),
     ],
   );
-}
-
-class _GradientBorder extends StatelessWidget {
-  final Widget child;
-  final double radius;
-
-  const _GradientBorder({required this.child, this.radius = 16});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: animedivesBorderGradient(context),
-        borderRadius: BorderRadius.circular(radius),
-      ),
-      padding: const EdgeInsets.all(1.0),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius - 1.0),
-        child: child,
-      ),
-    );
-  }
 }
 
 class _ContinueWatchingCard extends StatefulWidget {
@@ -1073,14 +1128,15 @@ class _ContinueWatchingCardState extends State<_ContinueWatchingCard> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  gradient: animedivesBorderGradient(context),
+                  color: scheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: animedives.border, width: 1.0),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   initial,
                   style: TextStyle(
-                    color: scheme.surface,
+                    color: scheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1120,11 +1176,11 @@ class _ContinueWatchingCardState extends State<_ContinueWatchingCard> {
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: animedives.cyanAccent.withValues(alpha: 0.12),
+                  color: scheme.surfaceContainerHighest,
                 ),
                 child: Icon(
                   Icons.play_arrow_rounded,
-                  color: animedives.cyanAccent,
+                  color: scheme.onSurface,
                   size: 20,
                 ),
               ),
