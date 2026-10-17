@@ -130,4 +130,71 @@ void main() {
       expect(find.byIcon(Icons.close_rounded), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'Tapping shield icon opens stats bottom sheet safely without theme extension crash',
+    (WidgetTester tester) async {
+      const site = AnimeSiteConfig(
+        name: 'AnimeTest',
+        homepageUrl: 'https://animetest.moe',
+        domain: 'animetest.moe',
+        hideSelectors: ['#ad1', '.banner'],
+        safeCdnDomains: ['cdn.animetest.moe'],
+      );
+
+      // Render with bare MaterialApp without AnimedivesColors extension
+      await tester.pumpWidget(
+        const MaterialApp(home: WebviewScreen(site: site)),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // Tap shield icon
+      await tester.tap(find.byIcon(Icons.shield_outlined));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Should render shield stats without throwing null assertion error
+      expect(find.text('Shield Active: AnimeTest'), findsOneWidget);
+    },
+  );
+
+  testWidgets('Floating control bar can collapse and expand', (
+    WidgetTester tester,
+  ) async {
+    const site = AnimeSiteConfig(
+      name: 'AnimeTest',
+      homepageUrl: 'https://animetest.moe',
+      domain: 'animetest.moe',
+      hideSelectors: ['#ad1', '.banner'],
+      safeCdnDomains: ['cdn.animetest.moe'],
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: WebviewScreen(site: site)));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // Initially expanded
+    expect(
+      find.byKey(const ValueKey('webview_floating_controls')),
+      findsOneWidget,
+    );
+
+    // Tap hide controls button
+    await tester.tap(find.byIcon(Icons.keyboard_arrow_down_rounded));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Now collapsed
+    expect(
+      find.byKey(const ValueKey('webview_collapsed_controls')),
+      findsOneWidget,
+    );
+
+    // Tap expand controls button
+    await tester.tap(find.byIcon(Icons.unfold_more_rounded));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Re-expanded
+    expect(
+      find.byKey(const ValueKey('webview_floating_controls')),
+      findsOneWidget,
+    );
+  });
 }

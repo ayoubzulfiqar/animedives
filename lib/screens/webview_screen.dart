@@ -13,20 +13,16 @@ import '../models/site_config.dart';
 import '../models/watch_history.dart';
 import '../themes.dart';
 
-/// Core brand color tokens used across dashboards, custom loaders,
-/// and glassmorphism interface panels.
-const Color kBrandBlue = Color(0xFF00E5FF); // Electric Cyan
-const Color kBrandAmber = Color(
-  0xFFB388FF,
-); // Vibrant Cyber Purple / Amber Accent
+/// Canonical brand color token aliases referencing themes.dart.
+const Color kBrandBlue = kBrandCyan;
+const Color kBrandAmber = kBrandPurple;
+const LinearGradient kBrandGradient = animedivesCyberGradient;
 
-/// Premium linear gradient applied to grid cards, borders,
-/// and programmatic text placeholders.
-const LinearGradient kBrandGradient = LinearGradient(
-  colors: [kBrandBlue, kBrandAmber],
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-);
+/// User-Agent strings for mobile and desktop browsing modes.
+const String kMobileUserAgent =
+    'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.113 Mobile Safari/537.36';
+const String kDesktopUserAgent =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 /// Name of the JavaScript channel used to notify Dart when the page enters or
 /// exits HTML5 fullscreen.
@@ -91,6 +87,7 @@ class _WebviewScreenState extends State<WebviewScreen>
   bool _canGoBack = false;
   bool _canGoForward = false;
   bool _isDesktopMode = false;
+  bool _controlsCollapsed = false;
 
   /// The deepest URL the user has reached on this provider. Persisted to the
   /// watch-history store so the session can be resumed after the app closes.
@@ -115,10 +112,7 @@ class _WebviewScreenState extends State<WebviewScreen>
       // the WebView like a normal phone browser instead of a desktop automation
       // client. A desktop UA (or a missing UA) heavily increases the chance
       // that "verify you are human" challenges re-issue after passing.
-      ..setUserAgent(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      )
+      ..setUserAgent(kMobileUserAgent)
       ..addJavaScriptChannel(
         _fullscreenChannel,
         onMessageReceived: _onFullscreenMessage,
@@ -466,16 +460,18 @@ class _WebviewScreenState extends State<WebviewScreen>
 
   Future<void> _toggleDesktopMode() async {
     setState(() => _isDesktopMode = !_isDesktopMode);
-    final ua = _isDesktopMode
-        ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-        : 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.113 Mobile Safari/537.36';
+    final ua = _isDesktopMode ? kDesktopUserAgent : kMobileUserAgent;
     await _controller.setUserAgent(ua);
     _retry();
   }
 
   void _showShieldStatsModal(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final animedives = Theme.of(context).extension<AnimedivesColors>()!;
+    final animedives =
+        Theme.of(context).extension<AnimedivesColors>() ??
+        (Theme.of(context).brightness == Brightness.dark
+            ? darkAnimedivesColors
+            : lightAnimedivesColors);
     final totalBlocked =
         widget.site.hideSelectors.length + globalHideSelectors.length;
     showModalBottomSheet(
@@ -862,6 +858,38 @@ class _WebviewScreenState extends State<WebviewScreen>
   );
 
   Widget _floatingControlBar() {
+    if (_controlsCollapsed) {
+      return Align(
+        alignment: Alignment.bottomRight,
+        child: ClipRRect(
+          key: const ValueKey('webview_collapsed_controls'),
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xD90D0D14),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: const Color(0x4000E5FF), width: 1.2),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x66000000),
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                tooltip: 'Show navigation controls',
+                icon: const Icon(Icons.unfold_more_rounded, size: 20),
+                color: kBrandBlue,
+                onPressed: () => setState(() => _controlsCollapsed = false),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     return Center(
       child: ClipRRect(
         key: const ValueKey('webview_floating_controls'),
@@ -929,6 +957,12 @@ class _WebviewScreenState extends State<WebviewScreen>
                   icon: const Icon(Icons.shield_outlined, size: 20),
                   color: kBrandBlue,
                   onPressed: () => _showShieldStatsModal(context),
+                ),
+                IconButton(
+                  tooltip: 'Hide controls',
+                  icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+                  color: Colors.white70,
+                  onPressed: () => setState(() => _controlsCollapsed = true),
                 ),
                 Container(
                   width: 1,
