@@ -77,7 +77,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<AnimeSiteConfig> get _filteredSites {
     final q = _query.trim().toLowerCase();
-    return _sites
+    final history = Get.find<HistoryController>();
+    final list = _sites
         .where(
           (s) =>
               (_showMature == null || s.mature == _showMature!) &&
@@ -86,7 +87,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   s.domain.toLowerCase().contains(q)),
         )
         .toList();
+
+    list.sort((a, b) {
+      final aFav = history.isFavorite(a.domain) ? 1 : 0;
+      final bFav = history.isFavorite(b.domain) ? 1 : 0;
+      if (aFav != bFav) return bFav.compareTo(aFav);
+      return 0;
+    });
+    return list;
   }
+
 
   Future<void> _openSite(AnimeSiteConfig site) async {
     // Opening a provider always starts at its homepage; per-anime resume points
@@ -638,59 +648,121 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _searchBar() => SliverPadding(
-    padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-    sliver: SliverToBoxAdapter(
-      child: Container(
-        decoration: BoxDecoration(
-          color: _scheme(context).surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _animedives(context).border),
-        ),
-        child: TextField(
-          controller: _searchController,
-          onChanged: (v) => setState(() => _query = v),
-          style: TextStyle(color: _scheme(context).onSurface),
-          decoration: InputDecoration(
-            hintText: 'Search providers...',
-            hintStyle: TextStyle(color: _animedives(context).mutedForeground),
-            prefixIcon: Icon(Icons.search, color: _scheme(context).onSurface),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
+  Widget _searchBar() {
+    final animedives = _animedives(context);
+    final count = _filteredSites.length;
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+      sliver: SliverToBoxAdapter(
+        child: Container(
+          decoration: BoxDecoration(
+            color: animedives.cardSurface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: animedives.cardBorder),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (v) => setState(() => _query = v),
+                  style: TextStyle(color: _scheme(context).onSurface),
+                  decoration: InputDecoration(
+                    hintText: 'Search providers...',
+                    hintStyle: TextStyle(color: animedives.mutedForeground),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: _scheme(context).onSurface,
+                    ),
+                    suffixIcon: _query.isNotEmpty
+                        ? IconButton(
+                            tooltip: 'Clear search',
+                            icon: Icon(
+                              Icons.clear_rounded,
+                              color: animedives.mutedForeground,
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _query = '');
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _scheme(context).surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: animedives.border),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      color: animedives.mutedForeground,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
+
 
   Widget _grid() => SliverPadding(
     padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
     sliver: SliverLayoutBuilder(
       builder: (context, constraints) {
-        final cross = constraints.crossAxisExtent > 600 ? 3 : 2;
-        final sites = _filteredSites;
-        return SliverGrid(
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: cross,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 0.82,
-          ),
-          delegate: SliverChildBuilderDelegate((context, index) {
-            final site = sites[index];
-            final isCustom = !defaultSites.contains(site);
-            return ProviderCard(
-              site: site,
-              onTap: () => _openSite(site),
-              onRemove: isCustom
-                  ? () => _confirmRemoveCustomSite(site)
-                  : null,
-            );
-          }, childCount: sites.length),
-        );
+        final width = constraints.crossAxisExtent;
+        final int cross;
+        if (width > 1200) {
+          cross = 5;
+        } else if (width > 900) {
+          cross = 4;
+        } else if (width > 600) {
+          cross = 3;
+        } else {
+          cross = 2;
+        }
+        return Obx(() {
+          // React to favorite state changes
+          final _ = Get.find<HistoryController>().favoriteDomains.length;
+          final sites = _filteredSites;
+          return SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: cross,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              childAspectRatio: 0.84,
+            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final site = sites[index];
+              final isCustom = !defaultSites.contains(site);
+              return ProviderCard(
+                key: ValueKey('provider_${site.domain}'),
+                site: site,
+                onTap: () => _openSite(site),
+                onRemove: isCustom
+                    ? () => _confirmRemoveCustomSite(site)
+                    : null,
+              );
+            }, childCount: sites.length),
+          );
+        });
       },
     ),
   );
@@ -719,6 +791,7 @@ class _ProviderCardState extends State<ProviderCard> {
   Widget build(BuildContext context) {
     final scheme = _scheme(context);
     final animedives = _animedives(context);
+    final history = Get.find<HistoryController>();
     final initial = widget.site.name.isNotEmpty
         ? widget.site.name[0].toUpperCase()
         : '?';
@@ -733,63 +806,143 @@ class _ProviderCardState extends State<ProviderCard> {
         scale: _pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 100),
         curve: Curves.easeInOut,
-        child: _GradientBorder(
-          radius: 10,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    _logo(initial),
-                    const Spacer(),
-                    if (widget.onRemove != null)
-                      Icon(
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: animedives.cardSurface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: animedives.cardBorder, width: 1.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _logo(initial),
+                  const Spacer(),
+                  Obx(() {
+                    final isFav = history.isFavorite(widget.site.domain);
+                    return IconButton(
+                      iconSize: 22,
+                      splashRadius: 18,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
+                      tooltip:
+                          isFav ? 'Unfavorite provider' : 'Favorite provider',
+                      icon: Icon(
+                        isFav ? Icons.star_rounded : Icons.star_border_rounded,
+                        color: isFav
+                            ? animedives.cyanAccent
+                            : animedives.mutedForeground,
+                      ),
+                      onPressed: () {
+                        history.toggleFavorite(widget.site.domain);
+                      },
+                    );
+                  }),
+                  if (widget.onRemove != null)
+                    IconButton(
+                      iconSize: 20,
+                      splashRadius: 18,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                      tooltip: 'Remove custom site',
+                      icon: Icon(
                         Icons.more_vert,
                         color: animedives.mutedForeground,
-                        size: 18,
                       ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  widget.site.name,
-                  style: TextStyle(
-                    color: scheme.onSurface,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.site.domain,
-                  style: TextStyle(
-                    color: animedives.mutedForeground,
-                    fontSize: 12,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const Spacer(),
-                Row(
-                  children: [
-                    _stat(
-                      Icons.shield_outlined,
-                      '${widget.site.hideSelectors.length} blocked',
+                      onPressed: widget.onRemove,
                     ),
-                    const Spacer(),
-                    Icon(Icons.play_circle_outline, color: scheme.onSurface),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.site.name,
+                      style: TextStyle(
+                        color: scheme.onSurface,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (widget.site.mature) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: animedives.destructive.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: animedives.destructive,
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Text(
+                        '18+',
+                        style: TextStyle(
+                          color: animedives.destructive,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ],
+                ],
+              ),
+              const SizedBox(height: 3),
+              Text(
+                widget.site.domain,
+                style: TextStyle(
+                  color: animedives.mutedForeground,
+                  fontSize: 12,
                 ),
-              ],
-            ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const Spacer(),
+              Row(
+                children: [
+                  _stat(
+                    Icons.shield_outlined,
+                    '${widget.site.hideSelectors.length} blocked',
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: animedives.cyanAccent.withValues(alpha: 0.12),
+                    ),
+                    child: Icon(
+                      Icons.play_arrow_rounded,
+                      color: animedives.cyanAccent,
+                      size: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
