@@ -1,21 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Monochrome gradient used for card borders and logo placeholders. It adapts to
-/// the active theme (white -> gray in dark, black -> gray in light) so the UI
-/// stays strictly grayscale with no chromatic accents.
+/// Core brand color tokens for the Electric Cyber Glassmorphism design system.
+const Color kBrandCyan = Color(0xFF00E5FF); // Electric Cyan
+const Color kBrandPurple = Color(0xFFB388FF); // Cyber Violet
+const Color kBrandObsidian = Color(0xFF08080A); // AMOLED True Black Base
+const Color kBrandNeonCrimson = Color(0xFFFF3366); // 18+ Warning / Error Accent
+
+/// Signature vibrant linear gradient applied to glowing cards, borders,
+/// hero buttons, and active indicators.
+const LinearGradient animedivesCyberGradient = LinearGradient(
+  colors: [kBrandCyan, kBrandPurple],
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+);
+
+/// Adaptive border gradient that transitions with theme mode, providing a
+/// crisp luminous outline in dark mode and clean cyber slate in light mode.
 LinearGradient animedivesBorderGradient(BuildContext context) {
-  final s = Theme.of(context).colorScheme;
-  return LinearGradient(
-    colors: [s.onSurface, s.outline],
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  if (isDark) {
+    return const LinearGradient(
+      colors: [Color(0x9900E5FF), Color(0x33B388FF)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+  }
+  return const LinearGradient(
+    colors: [Color(0x6600E5FF), Color(0x22B388FF)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 }
 
-/// Extra design tokens from the reference site that do not map onto the standard
-/// [ColorScheme] (muted foreground, borders, destructive, etc.). Attached to the
-/// theme via [ThemeExtension] so light and dark modes expose them consistently.
+/// Extra design tokens for the Electric Cyber Glassmorphism system.
 @immutable
 class AnimedivesColors extends ThemeExtension<AnimedivesColors> {
   final Color mutedForeground;
@@ -25,6 +43,10 @@ class AnimedivesColors extends ThemeExtension<AnimedivesColors> {
   final Color accentForeground;
   final Color destructive;
   final Color destructiveForeground;
+  final Color cyanAccent;
+  final Color purpleAccent;
+  final Color cardSurface;
+  final Color cardBorder;
 
   const AnimedivesColors({
     required this.mutedForeground,
@@ -34,6 +56,10 @@ class AnimedivesColors extends ThemeExtension<AnimedivesColors> {
     required this.accentForeground,
     required this.destructive,
     required this.destructiveForeground,
+    required this.cyanAccent,
+    required this.purpleAccent,
+    required this.cardSurface,
+    required this.cardBorder,
   });
 
   @override
@@ -45,6 +71,10 @@ class AnimedivesColors extends ThemeExtension<AnimedivesColors> {
     Color? accentForeground,
     Color? destructive,
     Color? destructiveForeground,
+    Color? cyanAccent,
+    Color? purpleAccent,
+    Color? cardSurface,
+    Color? cardBorder,
   }) =>
       AnimedivesColors(
         mutedForeground: mutedForeground ?? this.mutedForeground,
@@ -55,6 +85,10 @@ class AnimedivesColors extends ThemeExtension<AnimedivesColors> {
         destructive: destructive ?? this.destructive,
         destructiveForeground:
             destructiveForeground ?? this.destructiveForeground,
+        cyanAccent: cyanAccent ?? this.cyanAccent,
+        purpleAccent: purpleAccent ?? this.purpleAccent,
+        cardSurface: cardSurface ?? this.cardSurface,
+        cardBorder: cardBorder ?? this.cardBorder,
       );
 
   @override
@@ -69,72 +103,85 @@ class AnimedivesColors extends ThemeExtension<AnimedivesColors> {
       destructive: Color.lerp(destructive, other.destructive, t)!,
       destructiveForeground:
           Color.lerp(destructiveForeground, other.destructiveForeground, t)!,
+      cyanAccent: Color.lerp(cyanAccent, other.cyanAccent, t)!,
+      purpleAccent: Color.lerp(purpleAccent, other.purpleAccent, t)!,
+      cardSurface: Color.lerp(cardSurface, other.cardSurface, t)!,
+      cardBorder: Color.lerp(cardBorder, other.cardBorder, t)!,
     );
   }
 }
 
 const AnimedivesColors _lightAnimedives = AnimedivesColors(
-  mutedForeground: Color(0xFF525252),
-  border: Color(0xFFe4e4e4),
-  input: Color(0xFFebebeb),
-  accent: Color(0xFFebebeb),
+  mutedForeground: Color(0xFF6B7280),
+  border: Color(0xFFE5E7EB),
+  input: Color(0xFFF3F4F6),
+  accent: Color(0xFF00E5FF),
   accentForeground: Color(0xFF000000),
-  destructive: Color(0xFFe54b4f),
-  destructiveForeground: Color(0xFFffffff),
+  destructive: Color(0xFFFF3366),
+  destructiveForeground: Color(0xFFFFFFFF),
+  cyanAccent: kBrandCyan,
+  purpleAccent: kBrandPurple,
+  cardSurface: Color(0xFFFFFFFF),
+  cardBorder: Color(0xFFE5E7EB),
 );
 
 const AnimedivesColors _darkAnimedives = AnimedivesColors(
-  mutedForeground: Color(0xFFa4a4a4),
-  border: Color(0xFF242424),
-  input: Color(0xFF333333),
-  accent: Color(0xFF333333),
-  accentForeground: Color(0xFFffffff),
-  destructive: Color(0xFFff5b5b),
-  destructiveForeground: Color(0xFF000000),
+  mutedForeground: Color(0xFF9CA3AF),
+  border: Color(0xFF22222E),
+  input: Color(0xFF14141B),
+  accent: Color(0xFF00E5FF),
+  accentForeground: Color(0xFF000000),
+  destructive: Color(0xFFFF3366),
+  destructiveForeground: Color(0xFFFFFFFF),
+  cyanAccent: kBrandCyan,
+  purpleAccent: kBrandPurple,
+  cardSurface: Color(0xDD121218),
+  cardBorder: Color(0x3300E5FF),
 );
 
-/// Applies the Bricolage Grotesque font family to a base [TextTheme].
+/// Applies Bricolage Grotesque typography with crisp modern metrics.
 TextTheme _bricolage(TextTheme base) =>
     GoogleFonts.bricolageGrotesqueTextTheme(base);
 
 final ThemeData lightTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.light,
-  scaffoldBackgroundColor: const Color(0xFFfcfcfc),
+  scaffoldBackgroundColor: const Color(0xFFF8F9FD),
   colorScheme: ColorScheme.light(
-    primary: const Color(0xFF000000),
-    onPrimary: const Color(0xFFffffff),
-    secondary: const Color(0xFFebebeb),
-    onSecondary: const Color(0xFF000000),
-    surface: const Color(0xFFffffff),
-    onSurface: const Color(0xFF000000),
-    surfaceContainerHighest: const Color(0xFFf5f5f5),
-    error: const Color(0xFFe54b4f),
-    onError: const Color(0xFFffffff),
-    outline: const Color(0xFFe4e4e4),
-    outlineVariant: const Color(0xFFebebeb),
-    inverseSurface: const Color(0xFF000000),
-    inversePrimary: const Color(0xFFffffff),
+    primary: const Color(0xFF0A0A0C),
+    onPrimary: const Color(0xFFFFFFFF),
+    secondary: const Color(0xFF6366F1),
+    onSecondary: const Color(0xFFFFFFFF),
+    surface: const Color(0xFFFFFFFF),
+    onSurface: const Color(0xFF0F172A),
+    surfaceContainerHighest: const Color(0xFFF1F5F9),
+    error: kBrandNeonCrimson,
+    onError: const Color(0xFFFFFFFF),
+    outline: const Color(0xFFCBD5E1),
+    outlineVariant: const Color(0xFFE2E8F0),
+    inverseSurface: const Color(0xFF0A0A0C),
+    inversePrimary: const Color(0xFFFFFFFF),
   ),
   extensions: const <ThemeExtension<dynamic>>[_lightAnimedives],
   textTheme: _bricolage(Typography.material2021().black),
   appBarTheme: const AppBarTheme(
     backgroundColor: Colors.transparent,
     elevation: 0,
-    foregroundColor: Color(0xFF000000),
+    foregroundColor: Color(0xFF0F172A),
   ),
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
-      backgroundColor: Color(0xFF000000),
-      foregroundColor: Color(0xFFffffff),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      backgroundColor: const Color(0xFF0A0A0C),
+      foregroundColor: const Color(0xFFFFFFFF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      elevation: 0,
     ),
   ),
   inputDecorationTheme: InputDecorationTheme(
-    fillColor: Color(0xFFffffff),
+    fillColor: const Color(0xFFFFFFFF),
     filled: true,
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       borderSide: BorderSide.none,
     ),
   ),
@@ -143,21 +190,21 @@ final ThemeData lightTheme = ThemeData(
 final ThemeData darkTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.dark,
-  // True AMOLED: pure black background and surfaces so pixels can switch off.
-  scaffoldBackgroundColor: const Color(0xFF000000),
+  // Deep AMOLED Obsidian base.
+  scaffoldBackgroundColor: kBrandObsidian,
   colorScheme: ColorScheme.dark(
-    primary: const Color(0xFFffffff),
+    primary: kBrandCyan,
     onPrimary: const Color(0xFF000000),
-    secondary: const Color(0xFF1a1a1a),
-    onSecondary: const Color(0xFFffffff),
-    surface: const Color(0xFF000000),
-    onSurface: const Color(0xFFffffff),
-    surfaceContainerHighest: const Color(0xFF121212),
-    error: const Color(0xFFff5b5b),
-    onError: const Color(0xFF000000),
-    outline: const Color(0xFF242424),
-    outlineVariant: const Color(0xFF333333),
-    inverseSurface: const Color(0xFFffffff),
+    secondary: kBrandPurple,
+    onSecondary: const Color(0xFF000000),
+    surface: const Color(0xFF101015),
+    onSurface: const Color(0xFFFFFFFF),
+    surfaceContainerHighest: const Color(0xFF161620),
+    error: kBrandNeonCrimson,
+    onError: const Color(0xFFFFFFFF),
+    outline: const Color(0xFF262635),
+    outlineVariant: const Color(0xFF333345),
+    inverseSurface: const Color(0xFFFFFFFF),
     inversePrimary: const Color(0xFF000000),
   ),
   extensions: const <ThemeExtension<dynamic>>[_darkAnimedives],
@@ -165,20 +212,21 @@ final ThemeData darkTheme = ThemeData(
   appBarTheme: const AppBarTheme(
     backgroundColor: Colors.transparent,
     elevation: 0,
-    foregroundColor: Color(0xFFffffff),
+    foregroundColor: Color(0xFFFFFFFF),
   ),
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
-      backgroundColor: Color(0xFFffffff),
-      foregroundColor: Color(0xFF000000),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      backgroundColor: kBrandCyan,
+      foregroundColor: const Color(0xFF000000),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      elevation: 0,
     ),
   ),
   inputDecorationTheme: InputDecorationTheme(
-    fillColor: Color(0xFF000000),
+    fillColor: const Color(0xFF14141B),
     filled: true,
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       borderSide: BorderSide.none,
     ),
   ),
