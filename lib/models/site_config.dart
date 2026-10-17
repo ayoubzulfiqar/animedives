@@ -221,3 +221,52 @@ const List<AnimeSiteConfig> templateSites = [
     safeCdnDomains: ['videos.example-watch.moe', 'cdn.example-watch.moe'],
   ),
 ];
+
+/// Checks whether [host] is permitted by [site]'s domain, safe CDN domains, or global CDN domains.
+/// Normalizes domains to handle both naked and www. domains as well as all subdomains.
+bool isHostAllowed(String host, AnimeSiteConfig site) {
+  if (host.isEmpty) return false;
+  final h = host.trim().toLowerCase().replaceFirst(RegExp(r'^www\.'), '');
+
+  final d = site.domain.trim().toLowerCase().replaceFirst(RegExp(r'^www\.'), '');
+  if (d.isNotEmpty && (h == d || h.endsWith('.$d'))) {
+    return true;
+  }
+
+  for (final safe in site.safeCdnDomains) {
+    final s = safe.trim().toLowerCase().replaceFirst(RegExp(r'^www\.'), '');
+    if (s.isNotEmpty && (h == s || h.endsWith('.$s'))) {
+      return true;
+    }
+  }
+
+  for (final safe in globalSafeCdnDomains) {
+    final s = safe.trim().toLowerCase().replaceFirst(RegExp(r'^www\.'), '');
+    if (s.isNotEmpty && (h == s || h.endsWith('.$s'))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/// Builds the clutter-busting and sandbox-hardening stylesheet for [site].
+/// Exempts form inputs, textareas, and contenteditable elements from the touch-callout
+/// and selection freeze so users can type into search bars, episode boxes, and forms.
+String buildClutterCss(AnimeSiteConfig site) {
+  final selectors = [...globalHideSelectors, ...site.hideSelectors];
+  final rules = selectors.map((s) => '$s{display:none !important;}').join('\n');
+  const sandbox = '''
+*:not(input):not(textarea):not([contenteditable="true"]) {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: auto !important;
+  user-select: auto !important;
+}''';
+  return '$rules\n$sandbox';
+}
+

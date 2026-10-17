@@ -306,24 +306,8 @@ class _WebviewScreenState extends State<WebviewScreen>
   }
 
   /// Returns true when [host] is the site itself or a known-good CDN host.
-  bool _isHostAllowed(String host) {
-    final h = host.toLowerCase();
+  bool _isHostAllowed(String host) => isHostAllowed(host, widget.site);
 
-    final domain = widget.site.domain.toLowerCase();
-    if (domain.isNotEmpty && (h == domain || h.endsWith('.$domain'))) {
-      return true;
-    }
-
-    for (final safe in widget.site.safeCdnDomains) {
-      final s = safe.toLowerCase();
-      if (h == s || h.endsWith('.$s')) return true;
-    }
-    for (final safe in globalSafeCdnDomains) {
-      final s = safe.toLowerCase();
-      if (h == s || h.endsWith('.$s')) return true;
-    }
-    return false;
-  }
 
   /// Persists the current page as a resume point for the specific anime being
   /// watched (keyed by URL slug, so multiple animes on one site stay separate).
@@ -468,20 +452,8 @@ class _WebviewScreenState extends State<WebviewScreen>
 
   /// Per-site + global clutter selectors combined with the sandbox-hardening
   /// rules, returned as a single stylesheet string.
-  String get _clutterCss {
-    final selectors = [...globalHideSelectors, ...widget.site.hideSelectors];
-    final rules = selectors
-        .map((s) => '$s{display:none !important;}')
-        .join('\n');
-    const sandbox = '''
-*,*::before,*::after{
-  -webkit-touch-callout:none !important;
-  -webkit-user-select:none !important;
-  user-select:none !important;
-  -webkit-tap-highlight-color:transparent !important;
-}''';
-    return '$rules\n$sandbox';
-  }
+  String get _clutterCss => buildClutterCss(widget.site);
+
 
   /// Injects the clutter-busting CSS, the fullscreen listener and a viewport
   /// reset as early as the DOM allows. The style is applied the instant

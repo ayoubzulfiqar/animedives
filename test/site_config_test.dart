@@ -128,4 +128,29 @@ void main() {
       expect(templateSites, hasLength(3));
     });
   });
+
+  group('security shield and CSS sandbox', () {
+    test('isHostAllowed permits naked domain when site has www. domain', () {
+      const config = AnimeSiteConfig(
+        name: 'AnimeParadise',
+        homepageUrl: 'https://www.animeparadise.moe/',
+        domain: 'www.animeparadise.moe',
+      );
+      expect(isHostAllowed('animeparadise.moe', config), isTrue);
+      expect(isHostAllowed('sub.animeparadise.moe', config), isTrue);
+      expect(isHostAllowed('WWW.ANIMEParADISE.MOE', config), isTrue);
+      expect(isHostAllowed('evil.com', config), isFalse);
+    });
+
+    test('clutter sandbox CSS does not disable user-select on form inputs', () {
+      final css = buildClutterCss(const AnimeSiteConfig(
+        name: 'Test',
+        homepageUrl: 'https://test.com',
+        domain: 'test.com',
+      ));
+      expect(css, contains('input, textarea, [contenteditable="true"]'));
+      expect(css, contains('user-select: auto !important;'));
+    });
+  });
 }
+
